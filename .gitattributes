@@ -1,0 +1,32 @@
+# Wymuszamy końcówki linii LF dla wszystkich plików tekstowych
+* text=auto
+
+# Pliki PHP
+*.php text eol=lf
+
+# Pliki YAML / YML
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Pliki JSON
+*.json text eol=lf
+
+# Pliki ENV
+*.env text eol=lf
+*.env.local text eol=lf
+*.env.dev text eol=lf
+*.env.test text eol=lf
+
+# Pliki shell / bash
+*.sh text eol=lf
+
+# Pliki XML
+*.xml text eol=lf
+
+# Pliki CSS, JS, HTML
+*.css text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+
+# Pliki Markdown / dokumentacja
+*.md text eol=lf
