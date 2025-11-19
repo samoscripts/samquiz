@@ -1,0 +1,43 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # wszystkie klasy w src/
+    App\:
+        resource: '../src/'
+
+    # kontrolery, aby działał autowiring argumentów metod
+    App\UI\:
+        resource: '../src/UI/'
+        tags: ['controller.service_arguments']
+
+    # # wszystkie handlery
+    # App\Application\Quiz\Handler\:
+    #     resource: '../src/Application/Quiz/Handler/'
+    #     public: true
+
+    # # wszystkie serwisy domenowe
+    # App\Domain\Quiz\Service\:
+    #     resource: '../src/Domain/Quiz/Service/'
+    #     public: true
+
+    # AI Service - używamy OpenAI jako domyślny
+    App\Domain\Quiz\Shared\Service\AIServiceInterface:
+        alias: App\Infrastructure\AI\OpenAIService
+
+    # OpenAI Service
+    App\Infrastructure\AI\OpenAIService:
+        arguments:
+            $apiKey: '%env(OPENAI_API_KEY)%'
+            $apiUrl: 'https://api.openai.com/v1/chat/completions'
+            $model: 'gpt-3.5-turbo'
+        tags: ['ai.service']
+
+    # Mock AI Service (fallback)
+    App\Infrastructure\AI\MockAIService:
+        tags: ['ai.service.mock']
+
+    App\Infrastructure\EventListener\ApiExceptionListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.exception }
