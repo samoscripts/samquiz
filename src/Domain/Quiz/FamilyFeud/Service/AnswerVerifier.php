@@ -2,6 +2,9 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Service;
 
+use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer;
+use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
+
 class AnswerVerifier
 {
 
@@ -9,6 +12,27 @@ class AnswerVerifier
         private int $levLimit = 2,
         private int $similarLimit = 75
     ) {}
+
+    
+
+    public function findMatchingAnswers(string $userAnswer, array $answers): PlayerAnswer
+    {
+        $answerObject = null;
+
+        foreach ($answers as $index => $answer) {
+            if (!isset($answer['text'])) {
+                continue;
+            }
+
+            if ($this->checkAnswer($userAnswer, $answer['text'])) {
+                $answerObject = new Answer($answer['text'], $answer['points']);
+                return PlayerAnswer::fromPlayerInput($userAnswer, $answerObject);
+            }
+        }
+        return PlayerAnswer::fromPlayerInput($userAnswer);
+
+       
+    }
 
     /**
      * Normalizuje tekst (usuwanie polskich znaków, małe litery)
@@ -48,7 +72,7 @@ class AnswerVerifier
         $correctAnswer = trim($this->normalizeText($correctAnswer));
 
         if (empty($userAnswer) || empty($correctAnswer)) {
-            return false;
+            throw new \InvalidArgumentException('User answer and correct answer cannot be empty');
         }
 
         // Dokładne dopasowanie
@@ -68,30 +92,6 @@ class AnswerVerifier
         }
 
         return false;
-    }
-
-    /**
-     * Znajduje wszystkie pasujące odpowiedzi w liście
-     * 
-     * @param string $userAnswer Odpowiedź wpisana przez użytkownika
-     * @param array $answers Lista odpowiedzi w formacie [['text' => string, 'points' => int], ...]
-     * @return array Indeksy pasujących odpowiedzi
-     */
-    public function findMatchingAnswers(string $userAnswer, array $answers): array
-    {
-        $matchingIndices = [];
-
-        foreach ($answers as $index => $answer) {
-            if (!isset($answer['text'])) {
-                continue;
-            }
-
-            if ($this->checkAnswer($userAnswer, $answer['text'])) {
-                $matchingIndices[] = $index;
-            }
-        }
-
-        return $matchingIndices;
     }
 }
 

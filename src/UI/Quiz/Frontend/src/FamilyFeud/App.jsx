@@ -75,15 +75,13 @@ function App() {
 
       const result = await response.json()
 
-      if (result.success && result.matchingIndices && result.matchingIndices.length > 0) {
+      if (result.isCorrect && result.matchedAnswer.text.length > 0) {
         // Dodaj nowe odkryte odpowiedzi
         setRevealedAnswers(prevRevealed => {
           const newRevealed = new Set(prevRevealed)
-          result.matchingIndices.forEach(index => {
-            if (!prevRevealed.has(index)) {
-              newRevealed.add(index)
-            }
-          })
+          if (!prevRevealed.has(result.matchedAnswer.text)) {
+            newRevealed.add(result.matchedAnswer.text)
+          }
           return newRevealed
         })
         setAnswerInput('') // Wyczyść input po znalezieniu odpowiedzi
@@ -159,7 +157,7 @@ function App() {
           <div className="answers-list">
             {data.answers && data.answers.length > 0 ? (
               data.answers.map((answer, index) => {
-                const isRevealed = revealedAnswers.has(index)
+                const isRevealed = revealedAnswers.has(answer.text)
                 return (
                   <div 
                     key={index} 

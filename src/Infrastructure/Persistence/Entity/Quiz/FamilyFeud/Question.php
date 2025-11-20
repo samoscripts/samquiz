@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Quiz\FamilyFeud\Entity\ORM;
+namespace App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: "ff_question")]
-class FfQuestion
+class Question
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -22,10 +22,10 @@ class FfQuestion
     #[ORM\Column(type: "datetime")]
     private \DateTimeInterface $created_at;
 
-    #[ORM\OneToMany(mappedBy: "question", targetEntity: FfAnswer::class)]
+    #[ORM\OneToMany(mappedBy: "question", targetEntity: Answer::class)]
     private Collection $answers;
 
-    #[ORM\OneToMany(mappedBy: "question", targetEntity: FfAnswerUser::class)]
+    #[ORM\OneToMany(mappedBy: "question", targetEntity: AnswerUser::class)]
     private Collection $userAnswers;
 
     public function __construct()

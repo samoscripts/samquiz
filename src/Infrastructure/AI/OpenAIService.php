@@ -14,10 +14,11 @@ class OpenAIService implements AIServiceInterface
         private string $apiUrl,
     ) {}
 
-    public function generateQuestion(string $text): array
+    /**
+     * Uniwersalna metoda do wysyłania promptów do OpenAI
+     */
+    public function ask(string $prompt): array
     {
-        $prompt = $this->buildPrompt($text);
-        
         $response = $this->httpClient->request('POST', $this->apiUrl, [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
@@ -31,10 +32,9 @@ class OpenAIService implements AIServiceInterface
                         'content' => $prompt
                     ]
                 ],
-                'max_tokens' => 500
+                'max_tokens' => 1000
             ]
         ]);
-        $resp = $response->getContent();
 
         $data = $response->toArray();
         $content = $data['choices'][0]['message']['content'];
@@ -42,28 +42,20 @@ class OpenAIService implements AIServiceInterface
         return $this->parseResponse($content);
     }
 
-    private function buildPrompt(string $text): string
-    {
-
-        $prompt = <<<EOT
-        Na pytanie: $text
-        potrzebuję 10 odpowiedzi do quizu familijada - wraz z punktami. Suma punktów ma wynosić
-        Odpowiedz w formacie JSON:
-            "text": <odpowiedź>, "points": <punkty>
-        EOT;
-        return $prompt;
-    }
-
+    /**
+     * Parsuje odpowiedź z AI (usuwa markdown, dekoduje JSON)
+     */
     private function parseResponse(string $content): array
     {
         // Usuń markdown formatting jeśli istnieje
         $content = preg_replace('/```json\s*/', '', $content);
         $content = preg_replace('/```\s*$/', '', $content);
+        $content = trim($content);
         
-        $data = json_decode(trim($content), true);
+        $data = json_decode($content, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \RuntimeException('Nie udało się sparsować odpowiedzi AI: ' . json_last_error_msg());
+            throw new \RuntimeException('Nie udało się sparsować odpowiedzi AI: ' . json_last_error_msg() . '. Odpowiedź: ' . substr($content, 0, 200));
         }
         
         return $data;
