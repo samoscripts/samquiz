@@ -2,18 +2,19 @@
 
 namespace App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud;
 
+use App\Infrastructure\Persistence\Trait\TimestampableEntity;
+use App\Infrastructure\Persistence\Trait\IdEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use App\Domain\Quiz\FamilyFeud\ValueObject\Answer as DomainAnswer;
 
 #[ORM\Entity]
 #[ORM\Table(name: "ff_answer")]
 class Answer
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    use TimestampableEntity;
+    use IdEntity;
 
     #[ORM\ManyToOne(targetEntity: Question::class, inversedBy: "answers")]
     #[ORM\JoinColumn(nullable: false)]
@@ -25,17 +26,69 @@ class Answer
     #[ORM\Column]
     private int $points;
 
-    #[ORM\Column(type: "datetime")]
-    private \DateTimeInterface $created_at;
-
-    #[ORM\OneToMany(mappedBy: "answer", targetEntity: AnswerUser::class)]
-    private Collection $userAnswers;
+    #[ORM\OneToMany(mappedBy: "answer", targetEntity: AnswerPlayer::class)]
+    private Collection $answerPlayers;
 
     public function __construct()
     {
         $this->created_at = new \DateTime();
-        $this->userAnswers = new ArrayCollection();
+        $this->answerPlayers = new ArrayCollection();
     }
 
-    // getters / setters ...
+    public function getQuestion(): Question
+    {
+        return $this->question;
+    }
+
+    public function setQuestion(Question $question): self
+    {
+        $this->question = $question;
+        return $this;
+    }
+
+    public function getText(): string
+    {
+        return $this->text;
+    }
+
+    public function setText(string $text): self
+    {
+        $this->text = $text;
+        return $this;
+    }
+
+    public function getPoints(): int
+    {
+        return $this->points;
+    }
+
+    public function setPoints(int $points): self
+    {
+        $this->points = $points;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, AnswerPlayer>
+     */
+    public function getAnswerPlayers(): Collection
+    {
+        return $this->answerPlayers;
+    }
+
+    public function toDomain(): DomainAnswer
+    {
+        return new DomainAnswer(
+            $this->text,
+            $this->points
+        );
+    }
+
+    public static function fromDomain(DomainAnswer $domainAnswer): self
+    {
+        $answer = new self();
+        $answer->setText($domainAnswer->text());
+        $answer->setPoints($domainAnswer->points());
+        return $answer;
+    }
 }

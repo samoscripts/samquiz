@@ -2,6 +2,8 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Service;
 
+use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
+use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
 class PromptBuilder
 {
     /**
@@ -23,21 +25,20 @@ EOT;
     /**
      * Buduje prompt do weryfikacji odpowiedzi użytkownika
      */
-    public function buildVerifyAnswerPrompt(string $userAnswer, array $correctAnswers): string
+    public function buildVerifyAnswerPrompt(string $answerPlayerText, DomainQuestion $question): string
     {
+        $correctAnswers = $question->answers();
+        $correctAnswers = array_map(fn(Answer $answer) => $answer->text(), $correctAnswers);
         $answersList = json_encode($correctAnswers, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        
         return <<<EOT
-Użytkownik wpisał: "$userAnswer"
-
+Gra familijada - pytanie: "{$question->text()}"
+Odpowiedź użytkownika: "{$answerPlayerText}"
 Lista poprawnych odpowiedzi:
 $answersList
-
-Czy odpowiedź użytkownika pasuje do którejś z poprawnych? 
+Sprawdź czy odpowiedź użytkownika pasuje do którejś z poprawnych. Pasować może tylko jedna odpowiedź.
 Odpowiedz TYLKO w formacie JSON (bez dodatkowego tekstu, bez markdown):
-{"matches": [indeksy pasujących odpowiedzi], "found": true/false}
-
-Przykład: {"matches": [0, 2], "found": true}
+{"found": true/false, "answer": "odpowiedź"}
+Przykład: {"found": true, "answer": "Warszawa"}
 EOT;
     }
 }

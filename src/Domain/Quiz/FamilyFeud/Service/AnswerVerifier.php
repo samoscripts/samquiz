@@ -2,37 +2,81 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Service;
 
-use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer;
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
+use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
+use App\Domain\Quiz\FamilyFeud\Repository\AnswerPlayerRepositoryInterface;
+use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
+use App\Domain\Quiz\Shared\Service\AIServiceInterface;
+use App\Domain\Quiz\FamilyFeud\Service\PromptBuilder;
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\AnswerPlayer as DoctrineAnswerPlayer;
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
+use Doctrine\Common\Collections\Collection;
 
 class AnswerVerifier
 {
 
     public function __construct(
-        private int $levLimit = 2,
-        private int $similarLimit = 75
+        private AIServiceInterface $aiService,
+        private PromptBuilder $promptBuilder,
+        private AnswerPlayerRepositoryInterface $answerPlayerRepository,
+        private QuizRepositoryInterface $questionRepository,
     ) {}
 
     
 
-    public function findMatchingAnswers(string $userAnswer, array $answers): PlayerAnswer
+    public function findMatchingAnswers(string $answerPlayerText, int $questionId): DomainPlayerAnswer
     {
-        $answerObject = null;
-
-        foreach ($answers as $index => $answer) {
-            if (!isset($answer['text'])) {
-                continue;
-            }
-
-            if ($this->checkAnswer($userAnswer, $answer['text'])) {
-                $answerObject = new Answer($answer['text'], $answer['points']);
-                return PlayerAnswer::fromPlayerInput($userAnswer, $answerObject);
-            }
+        $doctrineAnswerPlayer = $this->answerPlayerRepository->findByPlayerTextAndQuestionId(
+            $answerPlayerText,
+            $questionId
+        );
+        
+        if ($doctrineAnswerPlayer) {
+            return $doctrineAnswerPlayer->toDomain();
         }
-        return PlayerAnswer::fromPlayerInput($userAnswer);
 
-       
+        $doctrineQuestion = $this->questionRepository->findById($questionId);
+        $domainQuestion = $doctrineQuestion->toDomain();
+        // Jeśli nie ma w bazie - generujemy z ChatGPT
+        $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $domainQuestion);
+        $aiResponse = $this->aiService->ask($prompt);
+
+        $found = $aiResponse['found'];
+        $answerText = $aiResponse['answer'];
+        $doctrineAnswer = null;
+        if($found === true) {
+            $doctrineAnswer = $this->getAnswer($answerText, $doctrineQuestion->getAnswers());
+        } 
+        
+        // Tworzymy encję domenową
+        $domainAnswerPlayer = new DomainPlayerAnswer(
+            playerInput: $answerPlayerText, 
+            matchedAnswer: $doctrineAnswer ? $doctrineAnswer->toDomain() : null,
+            isCorrect: $found, 
+            question: $domainQuestion
+        );
+        $doctrineAnswerPlayer = DoctrineAnswerPlayer::fromDomain(
+            $domainAnswerPlayer, 
+            $doctrineQuestion, 
+            $doctrineAnswer
+        );
+
+        // Zapisujemy do bazy
+        $this->answerPlayerRepository->save($doctrineAnswerPlayer);
+        return $domainAnswerPlayer;
     }
+
+    /**
+     * @param string $answerText
+     * @param Collection<int, DoctrineAnswer> $doctrineAnswers - kolekcja odpowiedzi z bazy danych
+     * @return ?DoctrineAnswer
+     */
+    private function getAnswer(string $answerText, Collection $doctrineAnswers): ?DoctrineAnswer
+    {
+        return $doctrineAnswers
+            ->filter(fn(DoctrineAnswer $a) => $this->checkAnswer($answerText, $a->getText()))
+            ->first() ?: null;
+    }
+
 
     /**
      * Normalizuje tekst (usuwanie polskich znaków, małe litery)
@@ -62,32 +106,21 @@ class AnswerVerifier
     /**
      * Sprawdza, czy odpowiedź użytkownika pasuje do odpowiedzi z listy
      * 
-     * @param string $userAnswer Odpowiedź wpisana przez użytkownika
+     * @param string $answerPlayerText Odpowiedź wpisana przez użytkownika
      * @param string $correctAnswer Poprawna odpowiedź z listy
      * @return bool
      */
-    private function checkAnswer(string $userAnswer, string $correctAnswer): bool
+    private function checkAnswer(string $answerPlayerText, string $correctAnswer): bool
     {
-        $userAnswer = trim($this->normalizeText($userAnswer));
+        $answerPlayerText = trim($this->normalizeText($answerPlayerText));
         $correctAnswer = trim($this->normalizeText($correctAnswer));
 
-        if (empty($userAnswer) || empty($correctAnswer)) {
-            throw new \InvalidArgumentException('User answer and correct answer cannot be empty');
+        if (empty($answerPlayerText) || empty($correctAnswer)) {
+            throw new \InvalidArgumentException('Answer player text and correct answer cannot be empty');
         }
 
         // Dokładne dopasowanie
-        if ($userAnswer === $correctAnswer) {
-            return true;
-        }
-
-        // 2. Levenshtein (literówki)
-        if (levenshtein($correctAnswer, $userAnswer) <= $this->levLimit) {
-            return true;
-        }
-
-        // 3. Podobieństwo procentowe
-        similar_text($correctAnswer, $userAnswer, $percent);
-        if ($percent >= $this->similarLimit) {
+        if ($answerPlayerText === $correctAnswer) {
             return true;
         }
 

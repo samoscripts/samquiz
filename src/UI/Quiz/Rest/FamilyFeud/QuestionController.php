@@ -30,9 +30,10 @@ class QuestionController
         try {
             $data = json_decode($request->getContent(), true);
             
-            $userAnswer = $data['answer'] ?? '';
+            $playerAnswerText = $data['answer'] ?? '';
             $answers = $data['answers'] ?? [];
-            $playerAnswer = $answerVerifier->findMatchingAnswers($userAnswer, $answers);
+            $questionId = $data['questionId'] ?? null;
+            $playerAnswer = $answerVerifier->findMatchingAnswers($playerAnswerText, $questionId);
 
             return new JsonResponse($playerAnswer->toArray(), 200);
 

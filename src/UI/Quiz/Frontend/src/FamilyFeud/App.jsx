@@ -65,7 +65,8 @@ function App() {
         },
         body: JSON.stringify({
           answer: answerInput.trim(),
-          answers: data.answers
+          answers: data.answers,
+          questionId: data.id
         }),
       })
 

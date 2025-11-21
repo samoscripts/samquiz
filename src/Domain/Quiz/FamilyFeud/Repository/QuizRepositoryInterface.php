@@ -2,13 +2,19 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Repository;
 
-use App\Domain\Quiz\FamilyFeud\Entity\Question;
-
-interface QuizRepositoryInterface
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
+use App\Domain\Shared\Repository\RepositoryInterface;
+use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
+/**
+ * Specyficzny interfejs repozytorium dla Question
+ * Rozszerza uniwersalny interfejs o specyficzne metody
+ */
+interface QuizRepositoryInterface extends RepositoryInterface
 {
-    public function save(Question $question): void;
+    /**
+     * Specyficzna metoda dla Question - znajdź po tekście
+     */
+    public function findByText(string $text): ?DoctrineQuestion;
 
-    public function findById(string $id): ?Question;
-
-    public function findAll(): array;
+    public function saveDomain(DomainQuestion $question): void;
 }

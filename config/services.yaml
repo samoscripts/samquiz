@@ -26,6 +26,8 @@ services:
     App\Domain\Quiz\Shared\Service\AIServiceInterface:
         alias: App\Infrastructure\AI\OpenAIService
 
+   
+
     # OpenAI Service
     App\Infrastructure\AI\OpenAIService:
         arguments:
@@ -37,6 +39,16 @@ services:
     # Mock AI Service (fallback)
     App\Infrastructure\AI\MockAIService:
         tags: ['ai.service.mock']
+
+    # Repository - mapowanie interfejsu na implementację
+    App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineQuizRepository
+
+    App\Domain\Quiz\FamilyFeud\Repository\AnswerPlayerRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineAnswerPlayerRepository
+
+    App\Domain\Quiz\FamilyFeud\Repository\AnswerRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineAnswerRepository
 
     App\Infrastructure\EventListener\ApiExceptionListener:
         tags:
