@@ -14,16 +14,25 @@ class QuestionGenerator
         private QuizRepositoryInterface $questionRepository
     ) {}
 
-    public function generate(string $questionText): DomainQuestion
+    public function generate(string $questionText, int $answersCount = 10): DomainQuestion
     {
         try {
             // Sprawdzenie czy pytanie już jest w bazie danych
             $doctrineQuestion = $this->questionRepository->findByText($questionText);
+            
             if ($doctrineQuestion !== null) {
-                return $doctrineQuestion->toDomain(); // Zwracamy z bazy
+                // Pobierz z bazy i przelicz punkty dla podanej liczby odpowiedzi
+                $domainQuestion = $doctrineQuestion->toDomain();
+                
+                // Jeśli liczba odpowiedzi jest mniejsza niż dostępne, przelicz punkty
+                if ($answersCount < count($domainQuestion->answers())) {
+                    $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
+                }
+                
+                return $domainQuestion;
             }
 
-            // Jeśli nie ma w bazie - generujemy z ChatGPT
+            // Jeśli nie ma w bazie - generujemy z ChatGPT (zawsze 10 odpowiedzi)
             $prompt = $this->promptBuilder->buildGenerateAnswersPrompt($questionText);
             $aiResponse = $this->aiService->ask($prompt);
             
@@ -38,6 +47,11 @@ class QuestionGenerator
             
             // Zapisujemy do bazy
             $this->questionRepository->saveDomain($domainQuestion);
+            
+            // Przelicz punkty jeśli answersCount < 10
+            if ($answersCount < 10 && count($domainQuestion->answers()) > $answersCount) {
+                $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
+            }
             
             return $domainQuestion;
             

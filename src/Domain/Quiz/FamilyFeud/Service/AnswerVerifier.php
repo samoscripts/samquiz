@@ -9,6 +9,7 @@ use App\Domain\Quiz\Shared\Service\AIServiceInterface;
 use App\Domain\Quiz\FamilyFeud\Service\PromptBuilder;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\AnswerPlayer as DoctrineAnswerPlayer;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
 use Doctrine\Common\Collections\Collection;
 
 class AnswerVerifier
@@ -23,27 +24,57 @@ class AnswerVerifier
 
     
 
-    public function findMatchingAnswers(string $answerPlayerText, int $questionId): DomainPlayerAnswer
+    public function findMatchingAnswers(
+        string $answerPlayerText, 
+        DoctrineQuestion $doctrineQuestion,
+        int $answersCount = 10
+    ): DomainPlayerAnswer
     {
         $doctrineAnswerPlayer = $this->answerPlayerRepository->findByPlayerTextAndQuestionId(
             $answerPlayerText,
-            $questionId
+            $doctrineQuestion->getId()
         );
-        
-        if ($doctrineAnswerPlayer) {
-            return $doctrineAnswerPlayer->toDomain();
+
+        if (!$doctrineAnswerPlayer) {
+            //pobierz z AI o zapisz do bazy
+            $doctrineAnswerPlayer = $this->saveAnswerPlayer($answerPlayerText, $doctrineQuestion, $answersCount);
         }
 
-        $doctrineQuestion = $this->questionRepository->findById($questionId);
+        $domainAnswerPlayer = $doctrineAnswerPlayer->toDomain();
+        if($doctrineAnswerPlayer->getAnswer() !== null) {
+            // Sprawdź czy znaleziona odpowiedź jest wśród pierwszych N odpowiedzi
+            $isInLimit = $this->isAnswerInFirstN(
+                $doctrineAnswerPlayer->getAnswer(), 
+                $doctrineQuestion, 
+                $answersCount
+            );
+            // Jeśli nie jest w pierwszych N odpowiedziach, traktuj jako niepoprawną
+            if (!$isInLimit) {
+                $domainAnswerPlayer = new DomainPlayerAnswer(
+                    playerInput: $answerPlayerText,
+                    matchedAnswer: null,
+                    isCorrect: false,
+                    question: $domainAnswerPlayer->getQuestion()
+                );
+            }
+        }
+        return $domainAnswerPlayer;
+    }
+
+
+    private function saveAnswerPlayer(string $answerPlayerText, DoctrineQuestion $doctrineQuestion): DoctrineAnswerPlayer
+    {   
         $domainQuestion = $doctrineQuestion->toDomain();
-        // Jeśli nie ma w bazie - generujemy z ChatGPT
+        
+        // Sprawdź czy odpowiedź pasuje do wszystkich w bazie
         $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $domainQuestion);
         $aiResponse = $this->aiService->ask($prompt);
 
         $found = $aiResponse['found'];
         $answerText = $aiResponse['answer'];
         $doctrineAnswer = null;
-        if($found === true) {
+        
+        if ($found === true) {
             $doctrineAnswer = $this->getAnswer($answerText, $doctrineQuestion->getAnswers());
         } 
         
@@ -62,7 +93,7 @@ class AnswerVerifier
 
         // Zapisujemy do bazy
         $this->answerPlayerRepository->save($doctrineAnswerPlayer);
-        return $domainAnswerPlayer;
+        return $doctrineAnswerPlayer;
     }
 
     /**
@@ -75,6 +106,34 @@ class AnswerVerifier
         return $doctrineAnswers
             ->filter(fn(DoctrineAnswer $a) => $this->checkAnswer($answerText, $a->getText()))
             ->first() ?: null;
+    }
+
+    /**
+     * Sprawdza czy znaleziona odpowiedź jest wśród pierwszych N odpowiedzi
+     * @param DoctrineAnswer $doctrineAnswer Znaleziona odpowiedź
+     * @param DoctrineQuestion $doctrineQuestion Pytanie
+     * @param int $answersCount Limit odpowiedzi
+     * @return bool
+     */
+    private function isAnswerInFirstN(
+        DoctrineAnswer $doctrineAnswer, 
+        DoctrineQuestion $doctrineQuestion, 
+        int $answersCount
+    ): bool {
+        // Pobierz odpowiedzi z domeny i sprawdź czy znaleziona odpowiedź jest w pierwszych N
+        $domainQuestion = $doctrineQuestion->toDomain();
+        $limitedAnswers = $domainQuestion->getLimitedAnswers($answersCount);
+        
+        // Sprawdź czy tekst znalezionej odpowiedzi pasuje do którejś z pierwszych N odpowiedzi
+        $answerText = $doctrineAnswer->getText();
+        
+        foreach ($limitedAnswers as $limitedAnswer) {
+            if ($this->checkAnswer($answerText, $limitedAnswer->text())) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
 

@@ -6,6 +6,7 @@ use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
 use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
 use App\Domain\Quiz\FamilyFeud\ValueObject\Answer as DomainAnswer;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as Question;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\AnswerPlayer as DoctrineAnswerPlayer;
 use App\Infrastructure\Persistence\Repository\DoctrineRepository;
@@ -16,18 +17,6 @@ class DoctrineQuizRepository extends DoctrineRepository implements QuizRepositor
     public function __construct(EntityManagerInterface $entityManager)
     {
         parent::__construct($entityManager, DoctrineQuestion::class);
-    }
-
-    /**
-     * Implementacja uniwersalnej metody save z mapowaniem Domain -> Doctrine
-     */
-    public function save(object $entity): void
-    {
-        if (!$entity instanceof DomainQuestion) {
-            throw new \InvalidArgumentException('Expected DomainQuestion instance');
-        }
-
-        $this->saveDomain($entity);
     }
 
     /**
@@ -97,19 +86,6 @@ class DoctrineQuizRepository extends DoctrineRepository implements QuizRepositor
     }
 
     /**
-     * Implementacja uniwersalnej metody findAll z mapowaniem Doctrine -> Domain
-     */
-    public function findAll(): array
-    {
-        $doctrineQuestions = parent::findAll();
-        
-        return array_map(
-            fn($dq) => $this->mapToDomain($dq),
-            $doctrineQuestions
-        );
-    }
-
-    /**
      * Implementacja uniwersalnej metody remove
      */
     public function remove(object $entity): void
@@ -122,51 +98,16 @@ class DoctrineQuizRepository extends DoctrineRepository implements QuizRepositor
     }
 
     /**
-     * Implementacja uniwersalnej metody findBy z mapowaniem Doctrine -> Domain
-     */
-    public function findBy(array $criteria): array
-    {
-        $doctrineQuestions = parent::findBy($criteria);
-        
-        return array_map(
-            fn($dq) => $this->mapToDomain($dq),
-            $doctrineQuestions
-        );
-    }
-
-    /**
      * Implementacja uniwersalnej metody findOneBy z mapowaniem Doctrine -> Domain
      */
-    public function findOneBy(array $criteria): ?DomainQuestion
+    public function findOneBy(array $criteria): ?DoctrineQuestion
     {
         $doctrineQuestion = parent::findOneBy($criteria);
         
         if (!$doctrineQuestion instanceof DoctrineQuestion) {
             return null;
         }
-
-        return $this->mapToDomain($doctrineQuestion);
-    }
-
-    /**
-     * Mapuje Doctrine Entity na Domain Entity
-     */
-    public function mapToDomain(DoctrineQuestion $doctrineQuestion): DomainQuestion
-    {
-        $domainAnswers = [];
-        
-        foreach ($doctrineQuestion->getAnswers() as $doctrineAnswer) {
-            $domainAnswers[] = new DomainAnswer(
-                $doctrineAnswer->getText(),
-                $doctrineAnswer->getPoints()
-            );
-        }
-
-        return new DomainQuestion(
-            $doctrineQuestion->getText(), 
-            $domainAnswers, 
-            $doctrineQuestion->getId()
-        );
+        return $doctrineQuestion;
     }
 }
 
