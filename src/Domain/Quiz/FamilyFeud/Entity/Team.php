@@ -2,26 +2,20 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Entity;
 
+use Symfony\Component\Serializer\Attribute\Groups;
+
 class Team
 {
     public function __construct(
+        #[Groups(['public'])]
         private string $name,
-        private int $roundPoints = 0,
+        #[Groups(['public'])]
         private int $totalPoints = 0,
     ) {}
 
-    public function addRoundPoints(int $points): void
-    {
-        $this->roundPoints += $points;
-    }
 
-    public function endRound(): void
-    {
-        $this->totalPoints += $this->roundPoints;
-        $this->roundPoints = 0;
-    }
 
-    public function rename(string $newName): void
+    public function setName(string $newName): void
     {
         $this->name = $newName;
     }
@@ -31,14 +25,22 @@ class Team
     { 
         return $this->name; 
     }
-
-    public function getRoundPoints(): int
-    { 
-        return $this->roundPoints; 
-    }
     
     public function getTotalPoints(): int 
     { 
         return $this->totalPoints; 
+    }
+
+    public function addPoints(int $points): void
+    {
+        $this->totalPoints += $points;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'totalPoints' => $this->totalPoints,
+        ];
     }
 }

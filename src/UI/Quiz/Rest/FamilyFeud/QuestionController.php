@@ -8,11 +8,25 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
+use App\Domain\Quiz\FamilyFeud\Entity\Game;
+use App\Domain\Quiz\FamilyFeud\Service\GameStorageInterface;
 
 class QuestionController
 {
     public function __construct(
     ) {}
+
+    public function createNewGame(Request $request, GameStorageInterface $gameStorage): JsonResponse
+    {
+        $game = Game::createNewGame(
+            $request->request->get('team1'),
+            $request->request->get('team2')
+        );
+
+        $gameStorage->save($game->getGameId(), $game);
+
+        return new JsonResponse($game->toArray());
+    }
 
     #[Route('/api/family-feud/question/generate', methods: ['POST', 'OPTIONS'])]
     public function generate(Request $request, QuestionGenerator $questionGenerator): JsonResponse

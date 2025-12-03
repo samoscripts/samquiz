@@ -17,6 +17,7 @@
         "symfony/framework-bundle": "7.3.*",
         "symfony/http-client": "7.3.*",
         "symfony/runtime": "7.3.*",
+        "symfony/serializer-pack": "*",
         "symfony/yaml": "7.3.*"
     },
     "config": {

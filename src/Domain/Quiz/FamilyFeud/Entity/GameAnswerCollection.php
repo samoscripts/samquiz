@@ -3,6 +3,7 @@
 namespace App\Domain\Quiz\FamilyFeud\Entity;
 
 use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * Kolekcja odpowiedzi z metodami pomocniczymi
@@ -10,6 +11,7 @@ use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer;
 final class GameAnswerCollection implements \IteratorAggregate, \Countable
 {
     /** @var GameAnswer[] */
+    #[Groups(['public'])]
     private array $answers = [];
 
     private const TOTAL_POINTS = 100;
@@ -17,13 +19,27 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
     /**
      * @param GameAnswer[] $answers
      */
-    public function __construct(array $answers = [], $count = 5)
+    public function __construct(array $answers = [], $count = null)
     {
-        $this->validateAnswers($answers);
-        for($i = 0; $i < $count; $i++) {
+        if (!empty($answers)) {
+            $this->validateAnswers($answers);
+        }
+        
+        // Jeśli $count nie jest podane, użyj count($answers)
+        if ($count === null) {
+            $count = count($answers);
+        }
+        
+        // Użyj min($count, count($answers)) aby uniknąć błędów indeksowania
+        $limit = min($count, count($answers));
+        
+        for($i = 0; $i < $limit; $i++) {
             $this->answers[] = new GameAnswer($answers[$i]->text, $answers[$i]->points);
         }
-        $this->recalculateAnswersPoints();
+        
+        if (!empty($this->answers)) {
+            $this->recalculateAnswersPoints();
+        }
     }
 
     /**
@@ -125,6 +141,26 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
     }
 
     /**
+     * Getter dla serializera
+     * @return GameAnswer[]
+     */
+    
+    public function getAnswers(): array
+    {
+        return $this->answers;
+    }
+
+    /**
+     * Setter dla deserializera
+     * @param GameAnswer[] $answers
+     */
+    public function setAnswers(array $answers): void
+    {
+        $this->validateAnswers($answers);
+        $this->answers = $answers;
+    }
+
+    /**
      * Zwraca nową kolekcję z ograniczoną liczbą odpowiedzi
      */
     public function limit(int $count): self
@@ -211,11 +247,21 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
 
     public static function fromArray(array $data): self
     {
-        return new self(
-            array_map(
-                fn($d) => new GameAnswer($d['text'], $d['points'], $d['hidden']),
-                $data
-            )
+        if (empty($data)) {
+            return new self([], 0);
+        }
+        
+        $answers = array_map(
+            fn($d) => new GameAnswer($d['text'], $d['points'], $d['hidden'] ?? true),
+            $data
         );
+        
+        // Użyj count($answers) jako wartości dla $count
+        $count = count($answers);
+        
+        // Utwórz nową instancję bezpośrednio z odpowiedziami
+        $collection = new self($answers, $count);
+        
+        return $collection;
     }
 }

@@ -5,6 +5,7 @@ use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
 use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
 use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
 use App\Domain\Quiz\Shared\Service\AIServiceInterface;
+use App\Domain\Quiz\FamilyFeud\Entity\Game;
 
 class QuestionGenerator
 {

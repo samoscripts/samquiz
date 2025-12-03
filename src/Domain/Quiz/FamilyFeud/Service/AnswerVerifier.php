@@ -4,7 +4,6 @@ namespace App\Domain\Quiz\FamilyFeud\Service;
 
 use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
 use App\Domain\Quiz\FamilyFeud\Repository\AnswerPlayerRepositoryInterface;
-use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
 use App\Domain\Quiz\Shared\Service\AIServiceInterface;
 use App\Domain\Quiz\FamilyFeud\Service\PromptBuilder;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\AnswerPlayer as DoctrineAnswerPlayer;
@@ -18,8 +17,7 @@ class AnswerVerifier
     public function __construct(
         private AIServiceInterface $aiService,
         private PromptBuilder $promptBuilder,
-        private AnswerPlayerRepositoryInterface $answerPlayerRepository,
-        private QuizRepositoryInterface $questionRepository,
+        private AnswerPlayerRepositoryInterface $answerPlayerRepository
     ) {}
 
     
@@ -54,7 +52,6 @@ class AnswerVerifier
                     playerInput: $answerPlayerText,
                     matchedAnswer: null,
                     isCorrect: false,
-                    question: $domainAnswerPlayer->getQuestion()
                 );
             }
         }
@@ -83,7 +80,6 @@ class AnswerVerifier
             playerInput: $answerPlayerText, 
             matchedAnswer: $doctrineAnswer ? $doctrineAnswer->toDomain() : null,
             isCorrect: $found, 
-            question: $domainQuestion
         );
         $doctrineAnswerPlayer = DoctrineAnswerPlayer::fromDomain(
             $domainAnswerPlayer, 

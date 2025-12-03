@@ -50,6 +50,10 @@ services:
     App\Domain\Quiz\FamilyFeud\Repository\AnswerRepositoryInterface:
         alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineAnswerRepository
 
+    # GameSession Storage Service
+    App\Domain\Quiz\FamilyFeud\Service\GameStorageInterface:
+        alias: App\Infrastructure\Storage\GameStorageSession
+
     App\Infrastructure\EventListener\ApiExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception }
