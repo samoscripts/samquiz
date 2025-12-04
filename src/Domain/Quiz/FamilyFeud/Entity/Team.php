@@ -11,6 +11,8 @@ class Team
         private string $name,
         #[Groups(['public'])]
         private int $totalPoints = 0,
+        #[Groups(['public'])]
+        private int $strikes = 0,
     ) {}
 
 
@@ -25,7 +27,12 @@ class Team
     { 
         return $this->name; 
     }
-    
+
+    public function getStrikes(): int
+    {
+        return $this->strikes;
+    }
+
     public function getTotalPoints(): int 
     { 
         return $this->totalPoints; 
@@ -34,6 +41,11 @@ class Team
     public function addPoints(int $points): void
     {
         $this->totalPoints += $points;
+    }
+    
+    public function increaseStrikes(): void
+    {
+        $this->strikes++;
     }
 
     public function toArray(): array

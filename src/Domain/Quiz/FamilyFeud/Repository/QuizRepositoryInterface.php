@@ -9,7 +9,7 @@ use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
  * Specyficzny interfejs repozytorium dla Question
  * Rozszerza uniwersalny interfejs o specyficzne metody
  */
-interface QuizRepositoryInterface extends RepositoryInterface
+interface QuestionRepositoryInterface extends RepositoryInterface
 {
     /**
      * Specyficzna metoda dla Question - znajdź po tekście

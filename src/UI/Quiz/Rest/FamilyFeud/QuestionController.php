@@ -7,7 +7,6 @@ use App\Domain\Quiz\FamilyFeud\Service\QuestionGenerator;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
 use App\Domain\Quiz\FamilyFeud\Entity\Game;
 use App\Domain\Quiz\FamilyFeud\Service\GameStorageInterface;
 
@@ -16,7 +15,9 @@ class QuestionController
     public function __construct(
     ) {}
 
-    public function createNewGame(Request $request, GameStorageInterface $gameStorage): JsonResponse
+
+    #[Route('/api/family-feud/game/create', methods: ['POST', 'OPTIONS'])]
+    public function createGame(Request $request, GameStorageInterface $gameStorage): JsonResponse
     {
         $game = Game::createNewGame(
             $request->request->get('team1'),
@@ -28,9 +29,13 @@ class QuestionController
         return new JsonResponse($game->toArray());
     }
 
-    #[Route('/api/family-feud/question/generate', methods: ['POST', 'OPTIONS'])]
-    public function generate(Request $request, QuestionGenerator $questionGenerator): JsonResponse
+    #[Route('/api/family-feud/{$gameId}/generateQuestion', methods: ['POST', 'OPTIONS'])]
+    public function generateQuestion(Request $request, QuestionGenerator $questionGenerator, string $gameId, GameStorageInterface $gameStorage): JsonResponse
     {
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
+        }
         $data = json_decode($request->getContent(), true);
         $questionText = $data['question'] ?? 'Brak pytania';
         $answersCount = isset($data['answersCount']) ? (int)$data['answersCount'] : 10;
@@ -43,35 +48,22 @@ class QuestionController
         return new JsonResponse($question->toArray());
     }
 
-    #[Route('/api/family-feud/question/{id}/verify', methods: ['POST', 'OPTIONS'])]
-    public function verify(
-        Request $request, 
-        AnswerVerifier $answerVerifier,
-        DoctrineQuestion $doctrineQuestion  
-    ): JsonResponse
+    #[Route('/api/family-feud/{$gameId}/verifyAnswer', methods: ['POST', 'OPTIONS'])]
+    public function verifyAnswer(Request $request, AnswerVerifier $answerVerifier, string $gameId, GameStorageInterface $gameStorage): JsonResponse
     {
-        try {
-            $data = json_decode($request->getContent(), true);
-            
-            $playerAnswerText = $data['answer'] ?? '';
-            $answersCount = isset($data['answersCount']) ? (int)$data['answersCount'] : 10;
-            
-            // Walidacja zakresu 3-10
-            $answersCount = max(3, min(10, $answersCount));
-            
-            $playerAnswer = $answerVerifier->findMatchingAnswers(
-                $playerAnswerText, 
-                $doctrineQuestion,
-                $answersCount
-            );
-
-            return new JsonResponse($playerAnswer->toArray(), 200);
-
-        } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
         }
+            
+        $playerAnswer = $answerVerifier->findMatchingAnswers(
+            $request->request->get('answer'), 
+            $game
+        );
+        $game->processPlayerAnswer($playerAnswer);
+        
+        $gameStorage->save($game->getGameId(), $game);
+
+        return new JsonResponse($game->toArray());
     }
 }

@@ -151,7 +151,7 @@ class AnswerCollection implements \IteratorAggregate, \Countable
     public function totalPoints(): int
     {
         return array_sum(
-            array_map(fn(Answer $a) => $a->points(), $this->items)
+            array_map(fn(Answer $a) => $a->getPoints(), $this->items)
         );
     }
 
@@ -176,19 +176,19 @@ class AnswerCollection implements \IteratorAggregate, \Countable
         $normalized = [];
 
         foreach ($this->items as $answer) {
-            $percent = ($answer->points() / $total) * 100;
+            $percent = ($answer->getPoints() / $total) * 100;
             $points = (int) round($percent);
             $normalized[] = new Answer($answer->text(), $points);
         }
 
         // Korekta sumy, aby wynosiła dokładnie 100
-        $sum = array_sum(array_map(fn(Answer $a) => $a->points(), $normalized));
+        $sum = array_sum(array_map(fn(Answer $a) => $a->getPoints(), $normalized));
         $diff = 100 - $sum;
 
         if ($diff !== 0 && count($normalized) > 0) {
             // Dodaj brakujący punkt/punkty do ostatniego elementu (bardziej naturalne)
             $last = $normalized[count($normalized) - 1];
-            $normalized[count($normalized) - 1] = new Answer($last->text(), $last->points() + $diff);
+            $normalized[count($normalized) - 1] = new Answer($last->text(), $last->getPoints() + $diff);
         }
 
         return new self($normalized);

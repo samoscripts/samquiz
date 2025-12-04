@@ -4,12 +4,15 @@ namespace App\Domain\Quiz\FamilyFeud\Service;
 
 use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
 use App\Domain\Quiz\FamilyFeud\Repository\AnswerPlayerRepositoryInterface;
+use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
 use App\Domain\Quiz\Shared\Service\AIServiceInterface;
 use App\Domain\Quiz\FamilyFeud\Service\PromptBuilder;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\AnswerPlayer as DoctrineAnswerPlayer;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQuestion;
 use Doctrine\Common\Collections\Collection;
+use App\Domain\Quiz\FamilyFeud\Entity\Game;
+use App\Infrastructure\Persistence\Mapper\Quiz\FamilyFeud\AnswerPlayerMapper;
 
 class AnswerVerifier
 {
@@ -17,25 +20,25 @@ class AnswerVerifier
     public function __construct(
         private AIServiceInterface $aiService,
         private PromptBuilder $promptBuilder,
-        private AnswerPlayerRepositoryInterface $answerPlayerRepository
+        private AnswerPlayerRepositoryInterface $answerPlayerRepository,
+        private AnswerPlayerMapper $answerPlayerMapper
     ) {}
 
     
 
     public function findMatchingAnswers(
         string $answerPlayerText, 
-        DoctrineQuestion $doctrineQuestion,
-        int $answersCount = 10
+        Game $game
     ): DomainPlayerAnswer
     {
         $doctrineAnswerPlayer = $this->answerPlayerRepository->findByPlayerTextAndQuestionId(
             $answerPlayerText,
-            $doctrineQuestion->getId()
+            $game->getQuestion()->getId()
         );
 
         if (!$doctrineAnswerPlayer) {
             //pobierz z AI o zapisz do bazy
-            $doctrineAnswerPlayer = $this->saveAnswerPlayer($answerPlayerText, $doctrineQuestion, $answersCount);
+            $doctrineAnswerPlayer = $this->saveAnswerPlayer($answerPlayerText, $game->getQuestion());
         }
 
         $domainAnswerPlayer = $doctrineAnswerPlayer->toDomain();
@@ -43,8 +46,8 @@ class AnswerVerifier
             // Sprawdź czy znaleziona odpowiedź jest wśród pierwszych N odpowiedzi
             $isInLimit = $this->isAnswerInFirstN(
                 $doctrineAnswerPlayer->getAnswer(), 
-                $doctrineQuestion, 
-                $answersCount
+                $game->getQuestion(), 
+                $game->getAnswersCount()
             );
             // Jeśli nie jest w pierwszych N odpowiedziach, traktuj jako niepoprawną
             if (!$isInLimit) {
@@ -59,9 +62,8 @@ class AnswerVerifier
     }
 
 
-    private function saveAnswerPlayer(string $answerPlayerText, DoctrineQuestion $doctrineQuestion): DoctrineAnswerPlayer
+    private function saveAnswerPlayer(string $answerPlayerText, DomainQuestion $domainQuestion): DoctrineAnswerPlayer
     {   
-        $domainQuestion = $doctrineQuestion->toDomain();
         
         // Sprawdź czy odpowiedź pasuje do wszystkich w bazie
         $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $domainQuestion);
@@ -69,26 +71,25 @@ class AnswerVerifier
 
         $found = $aiResponse['found'];
         $answerText = $aiResponse['answer'];
-        $doctrineAnswer = null;
+        $domainAnswer = null;
         
         if ($found === true) {
-            $doctrineAnswer = $this->getAnswer($answerText, $doctrineQuestion->getAnswers());
+            $domainAnswer = $domainQuestion->getAnswers()->getByText($answerText);
         } 
+
         
         // Tworzymy encję domenową
         $domainAnswerPlayer = new DomainPlayerAnswer(
             playerInput: $answerPlayerText, 
-            matchedAnswer: $doctrineAnswer ? $doctrineAnswer->toDomain() : null,
+            matchedAnswer: $domainAnswer,
             isCorrect: $found, 
         );
-        $doctrineAnswerPlayer = DoctrineAnswerPlayer::fromDomain(
+        $doctrineAnswerPlayer = $this->answerPlayerMapper->toEntity(
             $domainAnswerPlayer, 
-            $doctrineQuestion, 
-            $doctrineAnswer
+            questionId: $domainQuestion->getId(),
+            answerId: $domainAnswer ? $domainAnswer->getId() : null
         );
 
-        // Zapisujemy do bazy
-        $this->answerPlayerRepository->save($doctrineAnswerPlayer);
         return $doctrineAnswerPlayer;
     }
 
@@ -113,11 +114,10 @@ class AnswerVerifier
      */
     private function isAnswerInFirstN(
         DoctrineAnswer $doctrineAnswer, 
-        DoctrineQuestion $doctrineQuestion, 
+        DomainQuestion $domainQuestion, 
         int $answersCount
     ): bool {
         // Pobierz odpowiedzi z domeny i sprawdź czy znaleziona odpowiedź jest w pierwszych N
-        $domainQuestion = $doctrineQuestion->toDomain();
         $limitedAnswers = $domainQuestion->getLimitedAnswers($answersCount);
         
         // Sprawdź czy tekst znalezionej odpowiedzi pasuje do którejś z pierwszych N odpowiedzi

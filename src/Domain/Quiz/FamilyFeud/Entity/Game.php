@@ -4,11 +4,13 @@ namespace App\Domain\Quiz\FamilyFeud\Entity;
 
 use App\Domain\Quiz\FamilyFeud\Entity\Team;
 use App\Domain\Quiz\FamilyFeud\Entity\Question;
-use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
+use App\Domain\Quiz\FamilyFeud\Repository\QuestionRepositoryInterface;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\Ignore;
 use App\Domain\Quiz\FamilyFeud\Entity\TeamCollection;
 use App\Domain\Quiz\FamilyFeud\Entity\GamePhase;
+use App\Domain\Quiz\FamilyFeud\Service\AnswerVerifier;
+use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
 
 class Game
 {
@@ -16,7 +18,7 @@ class Game
     #[Groups(['public'])]
     private ?string $gameId = null;
 
-    #[Ignore]
+    #[Groups(['public'])]
     private ?Question $question = null;
 
     #[Groups(['public'])]
@@ -38,7 +40,7 @@ class Game
     private ?GameAnswerCollection $answersCollection = null; //lista odpowiedzi dla gry (liczba odpowiedzi wskazana 3-10)
 
     #[Ignore]
-    private ?QuizRepositoryInterface $questionRepository = null;
+    private ?QuestionRepositoryInterface $questionRepository = null;
 
     #[Groups(['public'])]
     private GamePhase $phase = GamePhase::NEW_GAME;
@@ -53,7 +55,7 @@ class Game
     /**
      * Ustawia repozytorium pytań (używane podczas deserializacji)
      */
-    public function setQuestionRepository(QuizRepositoryInterface $repository): void
+        public function setQuestionRepository(QuestionRepositoryInterface $repository): void
     {
         $this->questionRepository = $repository;
     }
@@ -162,6 +164,72 @@ class Game
     public function getTeams(): ?TeamCollection
     {
         return $this->teams;
+    }
+
+    public function getQuestion(): ?Question
+    {
+        return $this->question;
+    }
+
+    public function setQuestion(?Question $question): void
+    {
+        $this->question = $question;
+    }
+
+    public function processPlayerAnswer(DomainPlayerAnswer $playerAnswer): void
+    {
+        if ($playerAnswer->isCorrect()) {
+            $this->handleCorrectAnswer($playerAnswer);
+        } else {
+            $this->handleIncorrectAnswer();
+        }
+    }
+
+    public function handleCorrectAnswer(DomainPlayerAnswer $playerAnswer): void
+    {
+        $this->addRevealedAnswer($playerAnswer->getMatchedAnswer());
+        $this->roundPoints += $playerAnswer->getMatchedAnswer()->getPoints();
+
+        //jeżeli faza to steal - zmiana phase na endRound i dodanie punktów do drużyny przeciwnj
+        if ($this->phase === GamePhase::STEAL) {
+            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+            $this->setPhase(GamePhase::END_ROUND);
+        }
+        //jeżeli liczba odkrytych odpowiedzi jest równa liczbie odpowiedzi - zmiana phase na completed
+        if ($this->revealedAnswers->count() === $this->answersCount) {
+            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+            $this->setPhase(GamePhase::END_ROUND);
+        }
+    }
+
+    public function handleIncorrectAnswer(): void
+    {
+
+        //jeżeli faza to playing - to podbicie błędu o 1
+        if ($this->phase === GamePhase::PLAYING) {
+            $this->teams->getActiveTeam()->increaseStrikes();
+            if ($this->teams->getActiveTeam()->getStrikes() >= 3) {
+                $this->teams->switchActiveTeam();
+                $this->setPhase(GamePhase::STEAL);
+                return;
+            }
+            return;
+        }
+
+
+        
+        //jeżeli faza to faceOff - to tylko zmiana drużyny aktywnej
+        if ($this->phase === GamePhase::FACE_OFF) {
+            $this->teams->switchActiveTeam();
+            return;
+        }
+        
+        //jeżeli faza to steal - zmiana phase na endRound i dodanie punktów do drużyny przeciwnj
+        if ($this->phase === GamePhase::STEAL) {
+            $this->teams->switchActiveTeam();
+            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+            $this->setPhase(GamePhase::END_ROUND);
+        }
     }
 
     static public function createNewGame(

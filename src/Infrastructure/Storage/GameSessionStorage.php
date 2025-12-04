@@ -3,7 +3,7 @@
 namespace App\Infrastructure\Storage;
 
 use App\Domain\Quiz\FamilyFeud\Entity\Game;
-use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
+use App\Domain\Quiz\FamilyFeud\Repository\QuestionRepositoryInterface;
 use App\Domain\Quiz\FamilyFeud\Service\GameStorageInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -15,7 +15,7 @@ class GameStorageSession implements GameStorageInterface
     public function __construct(
         private SessionInterface $session,
         private SerializerInterface $serializer,
-        private QuizRepositoryInterface $questionRepository
+        private QuestionRepositoryInterface $questionRepository
     ) {
     }
 

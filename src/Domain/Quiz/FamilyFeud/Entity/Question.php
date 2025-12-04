@@ -7,16 +7,13 @@ use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
 class Question
 {
 
-    /**
-     * @param Answer[] $answers
-     */
     public function __construct(
         private string $text, 
-        private array $answers,
+        private GameAnswerCollection $answers,
         private ?int $id = null
     ) {}
 
-    public function id(): int
+    public function getId(): int
     {
         return $this->id;
     }
@@ -32,19 +29,17 @@ class Question
         return $this->text;
     }
 
-    /** @return Answer[] */
-    public function answers(): array
+    public function getAnswers(): GameAnswerCollection
     {
         return $this->answers;
     }
 
     /**
      * Zwraca odpowiedzi ograniczone do podanej liczby
-     * @return Answer[]
      */
-    public function getLimitedAnswers(int $limit): array
+    public function getLimitedAnswers(int $limit): GameAnswerCollection
     {
-        return array_slice($this->answers, 0, min($limit, count($this->answers)));
+        return $this->answers->limit($limit);
     }
 
     /**
@@ -60,7 +55,7 @@ class Question
         }
         
         // Oblicz sumę punktów z ograniczonych odpowiedzi
-        $currentSum = array_sum(array_map(fn(Answer $a) => $a->points(), $limitedAnswers));
+        $currentSum = $limitedAnswers->totalPoints();
         
         if ($currentSum == 0) {
             return $this;
@@ -71,22 +66,22 @@ class Question
         $ratio = $targetSum / $currentSum;
         
         $recalculatedAnswers = array_map(
-            fn(Answer $a) => new Answer($a->text(), (int)round($a->points() * $ratio)),
-            $limitedAnswers
+            fn(Answer $a) => new Answer($a->text(), (int)round($a->getPoints() * $ratio)),
+            $limitedAnswers->getAnswers()
         );
         
         // Upewnij się, że suma = 100 (korekta ostatniej odpowiedzi)
-        $actualSum = array_sum(array_map(fn(Answer $a) => $a->points(), $recalculatedAnswers));
+        $actualSum = array_sum(array_map(fn(Answer $a) => $a->getPoints(), $recalculatedAnswers));
         if ($actualSum != 100 && count($recalculatedAnswers) > 0) {
             $lastIndex = count($recalculatedAnswers) - 1;
             $lastAnswer = $recalculatedAnswers[$lastIndex];
             $recalculatedAnswers[$lastIndex] = new Answer(
                 $lastAnswer->text(),
-                $lastAnswer->points() + (100 - $actualSum)
+                $lastAnswer->getPoints() + (100 - $actualSum)
             );
         }
         
-        return new self($this->text, $recalculatedAnswers, $this->id);
+        return new self($this->text, new GameAnswerCollection($recalculatedAnswers), $this->id);
     }
 
     public function toArray(): array
@@ -103,7 +98,7 @@ class Question
         return [
             'id' => $this->id,
             'question' => $this->text,
-            'answers' => array_map(fn(Answer $a) => $a->toArray(), $this->answers),
+            'answers' => $this->answers->toArray(),
         ];
     }
 }

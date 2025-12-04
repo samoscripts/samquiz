@@ -8,6 +8,7 @@ enum GamePhase: string
     case FACE_OFF = 'FACE_OFF';
     case PLAYING = 'PLAYING';
     case STEAL = 'STEAL';
+    case END_ROUND = 'END_ROUND';
     case END_GAME = 'END_GAME';
 }
 

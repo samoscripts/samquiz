@@ -57,6 +57,14 @@ class TeamCollection
         $this->activeTeamKey = $key;
     }
 
+    public function switchActiveTeam(): void
+    {
+        $team1 = $this->getTeam(self::TEAM1_KEY);
+        $team2 = $this->getTeam(self::TEAM2_KEY);
+
+        $this->getActiveTeam() === $team1 ? $team2 : $team1;
+    }
+
     public function toArray(): array
     {
         return [

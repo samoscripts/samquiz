@@ -33,12 +33,12 @@ final class PlayerAnswer
         ];
     }
 
-    public function playerText(): string
+    public function getPlayerText(): string
     {
         return $this->playerInput;
     }
 
-    public function matchedAnswer(): ?DomainAnswer
+    public function getMatchedAnswer(): ?DomainAnswer
     {
         return $this->matchedAnswer;
     }

@@ -13,12 +13,9 @@ final class GameAnswer extends Answer
         #[Groups(['public'])]
         readonly public int $points,
         #[Groups(['public'])]
-        private bool $hidden = true
-    ) {}
-
-    public function isHidden(): bool
-    {
-        return $this->hidden;
+        readonly public ?int $id = null
+    ) {
+        parent::__construct($text, $points, $id);
     }
 
 

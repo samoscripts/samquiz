@@ -80,7 +80,8 @@ class Answer
     {
         return new DomainAnswer(
             $this->text,
-            $this->points
+            $this->points,
+            $this->id
         );
     }
 
@@ -88,7 +89,7 @@ class Answer
     {
         $answer = new self();
         $answer->setText($domainAnswer->text());
-        $answer->setPoints($domainAnswer->points());
+        $answer->setPoints($domainAnswer->getPoints());
         return $answer;
     }
 }

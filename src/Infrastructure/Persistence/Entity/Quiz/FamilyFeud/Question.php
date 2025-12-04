@@ -83,7 +83,7 @@ class Question
     {
         $question = new self();
         $question->setText($domainQuestion->text());
-        foreach ($domainQuestion->answers() as $domainAnswer) {
+        foreach ($domainQuestion->getAnswers() as $domainAnswer) {
             $question->addAnswer(Answer::fromDomain($domainAnswer));
         }
 

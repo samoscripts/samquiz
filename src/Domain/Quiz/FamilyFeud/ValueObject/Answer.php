@@ -6,7 +6,8 @@ class Answer
 {
     public function __construct(
         readonly public string $text,
-        readonly public int $points
+        readonly public int $points,
+        readonly public ?int $id = null
     ) {}
 
     /**
@@ -17,12 +18,14 @@ class Answer
         return $this->text;
     }
 
-    /**
-     * @deprecated Use $answer->points directly
-     */
-    public function points(): int
+    public function getPoints(): int
     {
         return $this->points;
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
     }
 
     public function toArray(): array
@@ -30,6 +33,7 @@ class Answer
         return [
             'text' => $this->text,
             'points' => $this->points,
+            'id' => $this->id,
         ];
     }
 }

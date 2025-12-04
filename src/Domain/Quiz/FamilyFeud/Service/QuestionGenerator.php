@@ -26,7 +26,7 @@ class QuestionGenerator
                 $domainQuestion = $doctrineQuestion->toDomain();
                 
                 // Jeśli liczba odpowiedzi jest mniejsza niż dostępne, przelicz punkty
-                if ($answersCount < count($domainQuestion->answers())) {
+                if ($answersCount < count($domainQuestion->getAnswers())) {
                     $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
                 }
                 
@@ -50,7 +50,7 @@ class QuestionGenerator
             $this->questionRepository->saveDomain($domainQuestion);
             
             // Przelicz punkty jeśli answersCount < 10
-            if ($answersCount < 10 && count($domainQuestion->answers()) > $answersCount) {
+            if ($answersCount < 10 && count($domainQuestion->getAnswers()) > $answersCount) {
                 $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
             }
             

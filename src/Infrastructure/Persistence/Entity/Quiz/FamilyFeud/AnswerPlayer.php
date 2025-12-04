@@ -91,16 +91,15 @@ class AnswerPlayer
     }
 
     public static function fromDomain(
-        DomainPlayerAnswer $domainPlayerAnswer,
-        Question $DoctrineQuestion,
-        ?Answer $DoctrineAnswer = null
+        DomainPlayerAnswer $domainPlayerAnswer
         ): self
     {
         $answerPlayer = new self();
-        $answerPlayer->setPlayerText($domainPlayerAnswer->playerText());
+        $answerPlayer->setPlayerText($domainPlayerAnswer->getPlayerText());
         $answerPlayer->setIsCorrect($domainPlayerAnswer->isCorrect());
-        $answerPlayer->setQuestion($DoctrineQuestion);
-        $DoctrineAnswer ? $answerPlayer->setAnswer($DoctrineAnswer) : null;
+
+        // $answerPlayer->setQuestion($domainPlayerAnswer->);
+        // $DoctrineAnswer ? $answerPlayer->setAnswer($DoctrineAnswer) : null;
         return $answerPlayer;
     }
 }

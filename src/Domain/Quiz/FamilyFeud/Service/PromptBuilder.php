@@ -27,7 +27,7 @@ EOT;
      */
     public function buildVerifyAnswerPrompt(string $answerPlayerText, DomainQuestion $question): string
     {
-        $correctAnswers = $question->answers();
+        $correctAnswers = $question->getAnswers();
         $correctAnswers = array_map(fn(Answer $answer) => $answer->text(), $correctAnswers);
         $answersList = json_encode($correctAnswers, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         return <<<EOT
