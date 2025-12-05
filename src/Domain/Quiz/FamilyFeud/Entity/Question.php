@@ -2,15 +2,23 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Entity;
 
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
-
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 class Question
 {
+    
 
     public function __construct(
-        private string $text, 
-        private GameAnswerCollection $answers,
-        private ?int $id = null
+        #[Groups(['public'])]
+        private string $text,
+        #[Groups(['public'])]
+        #[SerializedName('answerCollection')]
+        private GameAnswerCollection $answerCollection,
+        #[Groups(['public'])]
+        private ?int $id = null,
+        #[Groups(['public'])]
+        #[SerializedName('revealedAnswers')]
+        private ?GameAnswerCollection $revealedAnswers = new GameAnswerCollection()
     ) {}
 
     public function getId(): int
@@ -24,22 +32,47 @@ class Question
         return $this;
     }
 
-    public function text(): string
+    public function getText(): string
     {
         return $this->text;
     }
 
-    public function getAnswers(): GameAnswerCollection
+    public function setText(string $text): self
     {
-        return $this->answers;
+        $this->text = $text;
+        return $this;
     }
 
+    public function getAnswerCollection(): GameAnswerCollection
+    {
+        return $this->answerCollection;
+    }
+
+    public function setAnswerCollection(GameAnswerCollection $answerCollection): void
+    {
+        $this->answerCollection = $answerCollection;
+    }
     /**
      * Zwraca odpowiedzi ograniczone do podanej liczby
      */
     public function getLimitedAnswers(int $limit): GameAnswerCollection
     {
-        return $this->answers->limit($limit);
+        return $this->answerCollection->limit($limit);
+    }
+
+    public function getRevealedAnswers(): GameAnswerCollection
+    {
+        return $this->revealedAnswers;
+    }
+
+    public function setRevealedAnswers(GameAnswerCollection $revealedAnswers): void
+    {
+        $this->revealedAnswers = $revealedAnswers;
+    }
+
+    public function flushRevealedAnswers(): void
+    {
+        $this->revealedAnswers = new GameAnswerCollection();
     }
 
     /**
@@ -66,22 +99,24 @@ class Question
         $ratio = $targetSum / $currentSum;
         
         $recalculatedAnswers = array_map(
-            fn(Answer $a) => new Answer($a->text(), (int)round($a->getPoints() * $ratio)),
+            fn(GameAnswer $a) => new GameAnswer($a->text, (int)round($a->points * $ratio)),
             $limitedAnswers->getAnswers()
         );
         
         // Upewnij się, że suma = 100 (korekta ostatniej odpowiedzi)
-        $actualSum = array_sum(array_map(fn(Answer $a) => $a->getPoints(), $recalculatedAnswers));
+        $actualSum = array_sum(array_map(fn(GameAnswer $a) => $a->points, $recalculatedAnswers));
         if ($actualSum != 100 && count($recalculatedAnswers) > 0) {
             $lastIndex = count($recalculatedAnswers) - 1;
             $lastAnswer = $recalculatedAnswers[$lastIndex];
-            $recalculatedAnswers[$lastIndex] = new Answer(
-                $lastAnswer->text(),
-                $lastAnswer->getPoints() + (100 - $actualSum)
+            $recalculatedAnswers[$lastIndex] = new GameAnswer(
+                $lastAnswer->text,
+                $lastAnswer->points + (100 - $actualSum)
             );
         }
-        
-        return new self($this->text, new GameAnswerCollection($recalculatedAnswers), $this->id);
+
+        $answersCollection = new GameAnswerCollection();
+        $answersCollection->setAnswers($recalculatedAnswers);
+        return new self($this->text, $answersCollection, $this->id);
     }
 
     public function toArray(): array
@@ -92,13 +127,13 @@ class Question
         if ($this->text === null) {
             throw new \Exception('Question text is not set');
         }
-        if ($this->answers === null) {
+        if ($this->answerCollection === null) {
             throw new \Exception('Question answers are not set');
         }
         return [
             'id' => $this->id,
-            'question' => $this->text,
-            'answers' => $this->answers->toArray(),
+            'text' => $this->text,
+            'answerCollection' => $this->answerCollection->toArray(),
         ];
     }
 }

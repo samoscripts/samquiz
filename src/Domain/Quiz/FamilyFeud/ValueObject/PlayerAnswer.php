@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Quiz\FamilyFeud\ValueObject;
 
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer as DomainAnswer;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer;
 
 final class PlayerAnswer
 {
     public function __construct(
         public readonly string $playerInput,
-        public readonly ?DomainAnswer $matchedAnswer,
+        public readonly ?GameAnswer $matchedAnswer,
         public readonly bool $isCorrect
     ) {}
     
-    public static function fromPlayerInput(string $input, ?DomainAnswer $answer = null): self
+    public static function fromPlayerInput(string $input, ?GameAnswer $answer = null): self
     {
         return new self(
             playerInput: $input,
@@ -38,7 +38,7 @@ final class PlayerAnswer
         return $this->playerInput;
     }
 
-    public function getMatchedAnswer(): ?DomainAnswer
+    public function getMatchedAnswer(): ?GameAnswer
     {
         return $this->matchedAnswer;
     }

@@ -3,7 +3,7 @@
 namespace App\Domain\Quiz\FamilyFeud\Service;
 
 use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer;
 class PromptBuilder
 {
     /**
@@ -27,11 +27,11 @@ EOT;
      */
     public function buildVerifyAnswerPrompt(string $answerPlayerText, DomainQuestion $question): string
     {
-        $correctAnswers = $question->getAnswers();
-        $correctAnswers = array_map(fn(Answer $answer) => $answer->text(), $correctAnswers);
+        $correctAnswers = $question->getAnswerCollection()->getAnswers();
+        $correctAnswers = array_map(fn(GameAnswer $answer) => $answer->text, $correctAnswers);
         $answersList = json_encode($correctAnswers, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         return <<<EOT
-Gra familijada - pytanie: "{$question->text()}"
+Gra familijada - pytanie: "{$question->getText()}"
 Odpowiedź użytkownika: "{$answerPlayerText}"
 Lista poprawnych odpowiedzi:
 $answersList

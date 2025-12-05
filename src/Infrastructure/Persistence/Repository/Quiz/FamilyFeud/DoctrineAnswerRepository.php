@@ -5,7 +5,7 @@ use App\Domain\Quiz\FamilyFeud\Repository\AnswerRepositoryInterface;
 use App\Infrastructure\Persistence\Repository\DoctrineRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer as DomainAnswer;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer as DomainAnswer;
 
 class DoctrineAnswerRepository extends DoctrineRepository implements AnswerRepositoryInterface
 {
@@ -20,7 +20,7 @@ class DoctrineAnswerRepository extends DoctrineRepository implements AnswerRepos
         if (!$respond instanceof DoctrineAnswer) {
             return null;
         }
-        return new DomainAnswer($respond->getText(), $respond->getPoints());
+        return new DomainAnswer($respond->getText(), $respond->getPoints(), $respond->getId());
 
     }
 }

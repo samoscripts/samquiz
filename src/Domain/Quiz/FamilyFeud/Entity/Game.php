@@ -9,11 +9,17 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\Ignore;
 use App\Domain\Quiz\FamilyFeud\Entity\TeamCollection;
 use App\Domain\Quiz\FamilyFeud\Entity\GamePhase;
-use App\Domain\Quiz\FamilyFeud\Service\AnswerVerifier;
 use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 
 class Game
 {
+
+    #[Groups(['public'])]
+    private int $roundsCount = 3;
+
+    #[Groups(['public'])]
+    private int $currentRound = 0;
 
     #[Groups(['public'])]
     private ?string $gameId = null;
@@ -25,28 +31,19 @@ class Game
     private ?int $answersCount = null;
 
     #[Groups(['public'])]
-    private ?TeamCollection $teams = null;
+    #[SerializedName('teamsCollection')]
+    private ?TeamCollection $teamsCollection = null;
 
     #[Groups(['public'])]
     private int $roundPoints = 0;
 
-    #[Groups(['public'])]
-    private int $currentRound = 1;
-
-    #[Groups(['public'])]
-    private ?GameAnswerCollection $revealedAnswers = null; //odsłonięte odpowiedzi
-
-    #[Groups(['public'])]
-    private ?GameAnswerCollection $answersCollection = null; //lista odpowiedzi dla gry (liczba odpowiedzi wskazana 3-10)
 
     #[Ignore]
     private ?QuestionRepositoryInterface $questionRepository = null;
 
     #[Groups(['public'])]
     private GamePhase $phase = GamePhase::NEW_GAME;
-    /**
-     * @param Team[] $teams
-     */
+
     public function __construct(?string $gameId = null)
     {
         $this->gameId = $gameId;
@@ -109,43 +106,6 @@ class Game
     }
 
     /**
-     * Ustawia revealedAnswers
-     */
-    public function addRevealedAnswer(GameAnswer $answer): void
-    {
-        $this->revealedAnswers->add($answer);
-    }
-
-    /**
-     * Pobiera revealedAnswers
-     */
-    public function getRevealedAnswers(): ?GameAnswerCollection
-    {
-        return $this->revealedAnswers;
-    }
-
-    public function flushRevealedAnswers(): void
-    {
-        $this->revealedAnswers = new GameAnswerCollection();
-    }
-
-    /**
-     * Ustawia answersCollection
-     */
-    public function setAnswersCollection(?GameAnswerCollection $answersCollection): void
-    {
-        $this->answersCollection = $answersCollection;
-    }
-
-    /**
-     * Pobiera answersCollection
-     */
-    public function getAnswersCollection(): ?GameAnswerCollection
-    {
-        return $this->answersCollection;
-    }
-
-    /**
      * Ustawia phase
      */
     public function setPhase(GamePhase $phase): void
@@ -161,9 +121,14 @@ class Game
         return $this->phase;
     }
 
-    public function getTeams(): ?TeamCollection
+    public function getTeamsCollection(): ?TeamCollection
     {
-        return $this->teams;
+        return $this->teamsCollection;
+    }
+
+    public function setTeamsCollection(TeamCollection $teamsCollection): void
+    {
+        $this->teamsCollection = $teamsCollection;
     }
 
     public function getQuestion(): ?Question
@@ -185,70 +150,86 @@ class Game
         }
     }
 
-    public function handleCorrectAnswer(DomainPlayerAnswer $playerAnswer): void
+    private function handleCorrectAnswer(DomainPlayerAnswer $playerAnswer): void
     {
-        $this->addRevealedAnswer($playerAnswer->getMatchedAnswer());
-        $this->roundPoints += $playerAnswer->getMatchedAnswer()->getPoints();
+        $this->question->getRevealedAnswers()->addAnswer($playerAnswer->getMatchedAnswer() ?? throw new \InvalidArgumentException('Matched answer is required'));
+        $this->roundPoints += $playerAnswer->getMatchedAnswer()->points;
 
         //jeżeli faza to steal - zmiana phase na endRound i dodanie punktów do drużyny przeciwnj
         if ($this->phase === GamePhase::STEAL) {
-            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+            $this->teamsCollection->getActiveTeam()->addPoints($this->roundPoints);
             $this->setPhase(GamePhase::END_ROUND);
         }
         //jeżeli liczba odkrytych odpowiedzi jest równa liczbie odpowiedzi - zmiana phase na completed
-        if ($this->revealedAnswers->count() === $this->answersCount) {
-            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+        if ($this->question->getRevealedAnswers()->count() === $this->answersCount) {
+            $this->teamsCollection->getActiveTeam()->addPoints($this->roundPoints);
             $this->setPhase(GamePhase::END_ROUND);
         }
     }
 
-    public function handleIncorrectAnswer(): void
+    private function handleIncorrectAnswer(): void
     {
 
         //jeżeli faza to playing - to podbicie błędu o 1
         if ($this->phase === GamePhase::PLAYING) {
-            $this->teams->getActiveTeam()->increaseStrikes();
-            if ($this->teams->getActiveTeam()->getStrikes() >= 3) {
-                $this->teams->switchActiveTeam();
+            $this->teamsCollection->getActiveTeam()->increaseStrikes();
+            if ($this->teamsCollection->getActiveTeam()->getStrikes() >= 3) {
+                $this->teamsCollection->switchActiveTeam();
                 $this->setPhase(GamePhase::STEAL);
                 return;
             }
             return;
         }
 
-
-        
         //jeżeli faza to faceOff - to tylko zmiana drużyny aktywnej
         if ($this->phase === GamePhase::FACE_OFF) {
-            $this->teams->switchActiveTeam();
+            $this->teamsCollection->switchActiveTeam();
             return;
         }
         
         //jeżeli faza to steal - zmiana phase na endRound i dodanie punktów do drużyny przeciwnj
         if ($this->phase === GamePhase::STEAL) {
-            $this->teams->switchActiveTeam();
-            $this->teams->getActiveTeam()->addPoints($this->roundPoints);
+            $this->teamsCollection->switchActiveTeam();
+            $this->teamsCollection->getActiveTeam()->addPoints($this->roundPoints);
             $this->setPhase(GamePhase::END_ROUND);
         }
     }
 
     static public function createNewGame(
         string $team1Name, 
-        string $team2Name
+        string $team2Name,
+        int $roundsCount
     ): self
     {
         $gameId = md5(uniqid(rand(), true));
-        $teams = new TeamCollection();
-        $teams->setTeam1(new Team($team1Name));
-        $teams->setTeam2(new Team($team2Name));
-        return new self($gameId, $teams);
+        $game = new self($gameId);
+        $game->setRoundsCount($roundsCount);
+        $game->setCurrentRound(1);
+        $teamsCollection = new TeamCollection();
+        $teamsCollection->setTeam1(new Team($team1Name));
+        $teamsCollection->setTeam2(new Team($team2Name));
+
+        $game->setTeamsCollection($teamsCollection);
+        $game->setPhase(GamePhase::NEW_ROUND);
+        return $game;
+    }
+
+    public function setRoundsCount(int $roundsCount): void
+    {
+        $this->roundsCount = $roundsCount;
+    }
+
+    public function getRoundsCount(): int
+    {
+        return $this->roundsCount;
     }
 
     public function toArray(): array
     {
+        $teamsCollection = $this->teamsCollection->toArray();
         return [
             'gameId' => $this->gameId,
-            'teams' => $this->teams->toArray(),
+            'teamsCollection' => $teamsCollection,
             'phase' => $this->phase->value,
             'currentRound' => $this->currentRound,
         ];

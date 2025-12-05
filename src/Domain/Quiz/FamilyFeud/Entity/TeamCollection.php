@@ -7,19 +7,18 @@ use App\Domain\Quiz\FamilyFeud\Entity\Team;
 /**
  * Kolekcja drużyn z metodami pomocniczymi
  */
-class TeamCollection
+final class TeamCollection
 {
-    public const TEAM1_KEY = 'team1';
-    public const TEAM2_KEY = 'team2';
+    public const TEAM1_KEY = 1;
+    public const TEAM2_KEY = 2;
+
+
 
     #[Groups(['public'])]
-
-
-    /** @var Team[] */
-    private array $teams = [];
+    public array $teams = [];
 
     #[Groups(['public'])]
-    private ?string $activeTeamKey = null;
+    public ?int $activeTeamKey = null;
 
     public function __construct(
     ) {}
@@ -34,7 +33,7 @@ class TeamCollection
         $this->teams[self::TEAM2_KEY] = $team;
     }
 
-    public function getTeam(string $key): ?Team
+    public function getTeam(int $key): ?Team
     {
         if ($key !== self::TEAM1_KEY && $key !== self::TEAM2_KEY) {
             throw new \InvalidArgumentException('Invalid team key');
@@ -47,13 +46,35 @@ class TeamCollection
         return $this->teams[$key];
     }
 
-    public function getActiveTeam(): ?Team
+    public function addTeam(Team $team): void
     {
-        return $this->getTeam($this->activeTeamKey);
+        $this->teams[] = $team;
     }
 
-    public function setActiveTeamKey(string $key): void
+    public function getTeams(): array
     {
+        return $this->teams;
+    }
+
+    public function setTeams(array $teams): void
+    {
+        $this->teams = $teams;
+    }
+
+    public function getActiveTeam(): ?Team
+    {
+
+        if(!is_null($this->activeTeamKey) && in_array($this->activeTeamKey, [self::TEAM1_KEY, self::TEAM2_KEY])) {
+            return $this->getTeam($this->activeTeamKey);
+        }
+        return null;
+    }
+
+    public function setActiveTeamKey(?int $key): void
+    {
+        if(!is_null($key) && !in_array($key, [self::TEAM1_KEY, self::TEAM2_KEY])) {
+            throw new \InvalidArgumentException('Invalid team key');
+        }
         $this->activeTeamKey = $key;
     }
 
@@ -67,9 +88,11 @@ class TeamCollection
 
     public function toArray(): array
     {
+        $team1 = $this->teams[self::TEAM1_KEY]->toArray();
+        $team2 = $this->teams[self::TEAM2_KEY]->toArray();
         return [
-            'team1' => $this->teams[self::TEAM1_KEY]->toArray(),
-            'team2' => $this->teams[self::TEAM2_KEY]->toArray(),
+            'team1' => $team1,
+            'team2' => $team2,
         ];
     }
 }

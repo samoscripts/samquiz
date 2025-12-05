@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswerCollection;
 
 #[ORM\Entity]
 #[ORM\Table(name: "ff_question")]
@@ -70,11 +71,15 @@ class Question
 
     public function toDomain(): DomainQuestion
     {
-        $domainAnswers = [];
-        foreach ($this->answers as $answer) {
-            $domainAnswers[] = $answer->toDomain();
+        $answersCollection = new GameAnswerCollection();
+
+
+        $answers = $this->answers->getValues();
+
+        foreach ($answers as $answer) {
+            $answersCollection->addAnswer($answer->toDomain());
         }
-        $domainQuestion = new DomainQuestion($this->text, $domainAnswers, $this->id);
+        $domainQuestion = new DomainQuestion($this->text, $answersCollection, $this->id);
         
         return $domainQuestion;
     }
@@ -82,8 +87,8 @@ class Question
     public static function fromDomain(DomainQuestion $domainQuestion): self
     {
         $question = new self();
-        $question->setText($domainQuestion->text());
-        foreach ($domainQuestion->getAnswers() as $domainAnswer) {
+        $question->setText($domainQuestion->getText());
+        foreach ($domainQuestion->getAnswerCollection()->getAnswers() as $domainAnswer) {
             $question->addAnswer(Answer::fromDomain($domainAnswer));
         }
 

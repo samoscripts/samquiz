@@ -2,17 +2,17 @@
 namespace App\Domain\Quiz\FamilyFeud\Service;
 
 use App\Domain\Quiz\FamilyFeud\Entity\Question as DomainQuestion;
-use App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface;
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
+use App\Domain\Quiz\FamilyFeud\Repository\QuestionRepositoryInterface;
 use App\Domain\Quiz\Shared\Service\AIServiceInterface;
-use App\Domain\Quiz\FamilyFeud\Entity\Game;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswerCollection;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer;
 
 class QuestionGenerator
 {
     public function __construct(
         private AIServiceInterface $aiService,
         private PromptBuilder $promptBuilder,
-        private QuizRepositoryInterface $questionRepository
+        private QuestionRepositoryInterface $questionRepository
     ) {}
 
     public function generate(string $questionText, int $answersCount = 10): DomainQuestion
@@ -26,7 +26,7 @@ class QuestionGenerator
                 $domainQuestion = $doctrineQuestion->toDomain();
                 
                 // Jeśli liczba odpowiedzi jest mniejsza niż dostępne, przelicz punkty
-                if ($answersCount < count($domainQuestion->getAnswers())) {
+                if ($answersCount < $domainQuestion->getAnswerCollection()->count()) {
                     $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
                 }
                 
@@ -39,18 +39,20 @@ class QuestionGenerator
             
             // Parsujemy odpowiedź z AI
             $answers = array_map(
-                fn($answerData) => new Answer($answerData['text'], $answerData['points']),
+                fn($answerData) => new GameAnswer($answerData['text'], $answerData['points']),
                 $aiResponse
             );
             
+            $answersCollection = new GameAnswerCollection();
+            $answersCollection->setAnswers($answers);
             // Tworzymy encję domenową
-            $domainQuestion = new DomainQuestion($questionText, $answers);
+            $domainQuestion = new DomainQuestion($questionText, $answersCollection);
             
             // Zapisujemy do bazy
             $this->questionRepository->saveDomain($domainQuestion);
             
             // Przelicz punkty jeśli answersCount < 10
-            if ($answersCount < 10 && count($domainQuestion->getAnswers()) > $answersCount) {
+            if ($answersCount < 10 && $domainQuestion->getAnswerCollection()->count() > $answersCount) {
                 $domainQuestion = $domainQuestion->recalculatePointsForLimit($answersCount);
             }
             

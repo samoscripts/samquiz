@@ -2,6 +2,9 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
+        bind:
+            $session: '@session'
+            $serializer: '@serializer'
 
     # wszystkie klasy w src/
     App\:
@@ -41,8 +44,8 @@ services:
         tags: ['ai.service.mock']
 
     # Repository - mapowanie interfejsu na implementację
-    App\Domain\Quiz\FamilyFeud\Repository\QuizRepositoryInterface:
-        alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineQuizRepository
+    App\Domain\Quiz\FamilyFeud\Repository\QuestionRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineQuestionRepository
 
     App\Domain\Quiz\FamilyFeud\Repository\AnswerPlayerRepositoryInterface:
         alias: App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineAnswerPlayerRepository
@@ -54,6 +57,10 @@ services:
     App\Domain\Quiz\FamilyFeud\Service\GameStorageInterface:
         alias: App\Infrastructure\Storage\GameStorageSession
 
-    App\Infrastructure\EventListener\ApiExceptionListener:
-        tags:
-            - { name: kernel.event_listener, event: kernel.exception }
+
+
+
+    # ApiExceptionListener jest teraz EventSubscriber, więc nie potrzebuje tagów
+    # App\Infrastructure\EventListener\ApiExceptionListener:
+    #     tags:
+    #         - { name: kernel.event_listener, event: kernel.exception, priority: 10 }

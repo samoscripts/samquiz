@@ -7,7 +7,7 @@ use App\Infrastructure\Persistence\Trait\IdEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer as DomainAnswer;
+use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer as DomainAnswer;
 
 #[ORM\Entity]
 #[ORM\Table(name: "ff_answer")]
@@ -88,8 +88,8 @@ class Answer
     public static function fromDomain(DomainAnswer $domainAnswer): self
     {
         $answer = new self();
-        $answer->setText($domainAnswer->text());
-        $answer->setPoints($domainAnswer->getPoints());
+        $answer->setText($domainAnswer->text);
+        $answer->setPoints($domainAnswer->points);
         return $answer;
     }
 }

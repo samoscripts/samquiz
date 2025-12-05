@@ -74,7 +74,7 @@ class AnswerVerifier
         $domainAnswer = null;
         
         if ($found === true) {
-            $domainAnswer = $domainQuestion->getAnswers()->getByText($answerText);
+            $domainAnswer = $domainQuestion->getAnswerCollection()->getByText($answerText);
         } 
 
         

@@ -2,21 +2,61 @@
 
 namespace App\Domain\Quiz\FamilyFeud\Entity;
 
-use App\Domain\Quiz\FamilyFeud\ValueObject\Answer;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-final class GameAnswer extends Answer
+final class GameAnswer
 {
     public function __construct(
         #[Groups(['public'])]
-        readonly public string $text,
+         public string $text,
         #[Groups(['public'])]
-        readonly public int $points,
+         public int $points,
         #[Groups(['public'])]
-        readonly public ?int $id = null
+         public ?int $id = null
     ) {
-        parent::__construct($text, $points, $id);
     }
+
+    public function toArray(): array
+    {
+        return [
+            'text' => $this->text,
+            'points' => $this->points,
+            'id' => $this->id,
+        ];
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
+
+    public function getText(): string
+    {
+        return $this->text;
+    }
+
+    public function setText(string $text): void
+    {
+        $this->text = $text;
+    }
+
+    public function getPoints(): int
+    {
+        return $this->points;
+    }
+
+    public function setPoints(int $points): void
+    {
+        $this->points = $points;
+    }
+
+
+    
 
 
 }

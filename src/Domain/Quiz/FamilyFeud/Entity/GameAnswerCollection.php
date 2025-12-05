@@ -8,39 +8,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
 /**
  * Kolekcja odpowiedzi z metodami pomocniczymi
  */
-final class GameAnswerCollection implements \IteratorAggregate, \Countable
+final class GameAnswerCollection implements \Countable
 {
-    /** @var GameAnswer[] */
     #[Groups(['public'])]
     private array $answers = [];
 
-    private const TOTAL_POINTS = 100;
+    public function __construct(
+    ) {}
 
-    /**
-     * @param GameAnswer[] $answers
-     */
-    public function __construct(array $answers = [], $count = null)
-    {
-        if (!empty($answers)) {
-            $this->validateAnswers($answers);
-        }
-        
-        // Jeśli $count nie jest podane, użyj count($answers)
-        if ($count === null) {
-            $count = count($answers);
-        }
-        
-        // Użyj min($count, count($answers)) aby uniknąć błędów indeksowania
-        $limit = min($count, count($answers));
-        
-        for($i = 0; $i < $limit; $i++) {
-            $this->answers[] = new GameAnswer($answers[$i]->text, $answers[$i]->points);
-        }
-        
-        if (!empty($this->answers)) {
-            $this->recalculateAnswersPoints();
-        }
-    }
+    private const TOTAL_POINTS = 100;
 
     /**
      * Walidacja, że wszystkie elementy są instancjami Answer
@@ -58,29 +34,9 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
     /**
      * Dodaje odpowiedź do kolekcji
      */
-    public function add(GameAnswer $answer): void
+    public function addAnswer(GameAnswer $answer): void
     {
         $this->answers[] = $answer;
-    }
-
-    /**
-     * Usuwa odpowiedź z kolekcji
-     */
-    public function remove(GameAnswer $answer): void
-    {
-        $this->answers = array_filter(
-            $this->answers,
-            fn(GameAnswer $a) => $a !== $answer
-        );
-        $this->answers = array_values($this->answers); // Reindex array
-    }
-
-    /**
-     * Pobiera odpowiedź po indeksie
-     */
-    public function get(int $index): ?GameAnswer
-    {
-        return $this->answers[$index] ?? null;
     }
 
     /**
@@ -97,14 +53,6 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Sprawdza czy odpowiedź istnieje w kolekcji
-     */
-    public function contains(GameAnswer $answer): bool
-    {
-        return in_array($answer, $this->answers, true);
-    }
-
-    /**
      * Sprawdza czy kolekcja jest pusta
      */
     public function isEmpty(): bool
@@ -112,48 +60,12 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
         return empty($this->answers);
     }
 
-    /**
-     * Zwraca pierwszą odpowiedź
-     */
-    public function first(): ?GameAnswer
-    {
-        return $this->answers[0] ?? null;
-    }
-
-    /**
-     * Zwraca ostatnią odpowiedź
-     */
-    public function last(): ?GameAnswer
-    {
-        if (empty($this->answers)) {
-            return null;
-        }
-        return $this->answers[count($this->answers) - 1];
-    }
-
-    /**
-     * Zwraca wszystkie odpowiedzi jako tablicę
-     * @return GameAnswer[]
-     */
-    public function all(): array
-    {
-        return $this->answers;
-    }
-
-    /**
-     * Getter dla serializera
-     * @return GameAnswer[]
-     */
-    
     public function getAnswers(): array
     {
         return $this->answers;
     }
 
-    /**
-     * Setter dla deserializera
-     * @param GameAnswer[] $answers
-     */
+
     public function setAnswers(array $answers): void
     {
         $this->validateAnswers($answers);
@@ -165,15 +77,9 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
      */
     public function limit(int $count): self
     {
-        return new self(array_slice($this->answers, 0, $count));
-    }
-
-    /**
-     * Zwraca nową kolekcję z wyciętym fragmentem
-     */
-    public function slice(int $offset, ?int $length = null): self
-    {
-        return new self(array_slice($this->answers, $offset, $length));
+        $answersCollection = new self();
+        $answersCollection->setAnswers(array_slice($this->answers, 0, $count));
+        return $answersCollection;
     }
 
     public function getIterator(): \ArrayIterator
@@ -232,36 +138,16 @@ final class GameAnswerCollection implements \IteratorAggregate, \Countable
             $last = $normalized[count($normalized) - 1];
             $normalized[count($normalized) - 1] = new GameAnswer($last->text, $last->points + $diff);
         }
-
-        return new self($normalized);
+        $answersCollection = new self();
+        $answersCollection->setAnswers($normalized);
+        return $answersCollection;
     }
 
     public function toArray(): array
     {
         return array_map(fn(GameAnswer $a) => [
             'text' => $a->text,
-            'points' => $a->points,
-            'hidden' => $a->isHidden(),
+            'points' => $a->points
         ], $this->answers);
-    }
-
-    public static function fromArray(array $data): self
-    {
-        if (empty($data)) {
-            return new self([], 0);
-        }
-        
-        $answers = array_map(
-            fn($d) => new GameAnswer($d['text'], $d['points'], $d['hidden'] ?? true),
-            $data
-        );
-        
-        // Użyj count($answers) jako wartości dla $count
-        $count = count($answers);
-        
-        // Utwórz nową instancję bezpośrednio z odpowiedziami
-        $collection = new self($answers, $count);
-        
-        return $collection;
     }
 }
