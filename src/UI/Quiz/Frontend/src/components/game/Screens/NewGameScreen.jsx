@@ -6,6 +6,7 @@ import Input from '../../common/Input'
 import ErrorMessage from '../../common/ErrorMessage'
 import LoadingSpinner from '../../common/LoadingSpinner'
 import { useGameAlert } from '../../../hooks/useGameAlert'
+import { useGameIdFromUrl } from '../../../hooks/useGameIdFromUrl'
 
 function NewGameScreen() {
   const [team1Name, setTeam1Name] = useState('Drużyna 1')
@@ -14,6 +15,7 @@ function NewGameScreen() {
   const { setGameState, setLoading, setError, loading, error, game } = useGameStore()
   const gameAlert = game?.gameAlert
   const { handleGameAlert } = useGameAlert()
+  const { updateUrlWithGameId } = useGameIdFromUrl()
 
   // Obsługa alertów - można rozszerzyć w przyszłości
   useEffect(() => {
@@ -38,6 +40,9 @@ function NewGameScreen() {
       
       // Zapisujemy dokładnie to, co zwrócił backend
       setGameState(gameData)
+      
+      // Aktualizuj URL z gameId (tylko dla przeglądarki)
+      updateUrlWithGameId(gameData.gameId)
     } catch (err) {
       setError(err.message)
     } finally {

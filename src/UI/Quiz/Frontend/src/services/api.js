@@ -147,5 +147,26 @@ export const gameApi = {
     }
     return response.json()
   },
+
+  /**
+   * Pobiera stan gry z backendu
+   * Używane przy odświeżeniu strony - przywraca grę z sesji
+   */
+  async getGame(gameId) {
+    const response = await fetch(`${API_BASE}/game/${gameId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(error.error || `HTTP error! status: ${response.status}`)
+    }
+    return response.json()
+  },
 }
 

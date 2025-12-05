@@ -160,4 +160,19 @@ class QuestionController
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
+
+    #[Route('/api/family-feud/game/{gameId}', methods: ['GET', 'OPTIONS'])]
+    public function getGame(Request $request, string $gameId, GameStorageInterface $gameStorage): JsonResponse
+    {
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
+        }
+
+        $serialized = $this->serializer->serialize($game, 'json', [
+            'groups' => ['public', 'alert']
+        ]);
+        
+        return JsonResponse::fromJsonString($serialized);
+    }
 }

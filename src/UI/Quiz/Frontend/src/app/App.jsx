@@ -10,13 +10,53 @@ import EndRoundScreen from '../components/game/Screens/EndRoundScreen'
 import PageContainer from '../components/layout/PageContainer'
 import ErrorXOverlay from '../components/game/ErrorXOverlay'
 import correctSound from '../sounds/correct5.wav'
+import { gameApi } from '../services/api'
+import { useGameIdFromUrl } from '../hooks/useGameIdFromUrl'
 
 function App() {
   const phase = useGameStore(state => state.game?.phase)
   const gameAlert = useGameStore(state => state.game?.gameAlert)
+  const gameId = useGameStore(state => state.game?.gameId)
   const [showErrorX, setShowErrorX] = useState(false)
   const audioRef = useRef(null)
   const previousAlertRef = useRef(null)
+  const { getGameIdFromUrl, updateUrlWithGameId } = useGameIdFromUrl()
+  const { setGameState, setLoading, setError } = useGameStore()
+  const hasRestoredGameRef = useRef(false)
+
+  // Przywróć grę z URL przy pierwszym załadowaniu
+  useEffect(() => {
+    if (hasRestoredGameRef.current) return
+    hasRestoredGameRef.current = true
+
+    const urlGameId = getGameIdFromUrl()
+    if (urlGameId && !gameId) {
+      // Pobierz grę z backendu
+      setLoading(true)
+      gameApi.getGame(urlGameId)
+        .then(gameData => {
+          setGameState(gameData)
+          updateUrlWithGameId(gameData.gameId)
+        })
+        .catch(err => {
+          console.warn('Nie udało się przywrócić gry:', err)
+          // Jeśli gra nie istnieje, usuń gameId z URL
+          updateUrlWithGameId(null)
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Tylko przy mount - celowo bez zależności
+
+  // Aktualizuj URL gdy gameId się zmienia (tylko dla przeglądarki)
+  useEffect(() => {
+    if (gameId) {
+      updateUrlWithGameId(gameId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]) // updateUrlWithGameId jest stabilną funkcją z hooka
 
   // Globalna obsługa alertów - działa niezależnie od aktualnego ekranu
   useEffect(() => {
