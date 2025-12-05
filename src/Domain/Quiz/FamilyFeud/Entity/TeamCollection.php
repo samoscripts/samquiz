@@ -12,8 +12,6 @@ final class TeamCollection
     public const TEAM1_KEY = 1;
     public const TEAM2_KEY = 2;
 
-
-
     #[Groups(['public'])]
     public array $teams = [];
 
@@ -51,6 +49,10 @@ final class TeamCollection
         $this->teams[] = $team;
     }
 
+    /**
+     * Zwraca wszystkie drużyny z kolekcji
+     * @return Team[]
+     */
     public function getTeams(): array
     {
         return $this->teams;
@@ -80,10 +82,25 @@ final class TeamCollection
 
     public function switchActiveTeam(): void
     {
-        $team1 = $this->getTeam(self::TEAM1_KEY);
-        $team2 = $this->getTeam(self::TEAM2_KEY);
+        if(is_null($this->getActiveTeam())) {
+            throw new \InvalidArgumentException('Active team is not set');
+        }
 
-        $this->getActiveTeam() === $team1 ? $team2 : $team1;
+        if($this->getActiveTeam() === $this->getTeam(self::TEAM1_KEY)) {
+            $this->setActiveTeamKey(self::TEAM2_KEY);
+        }
+        else {
+            $this->setActiveTeamKey(self::TEAM1_KEY);
+        }
+    }
+
+    
+
+    public function resetStrikes(): void
+    {
+        foreach ($this->getTeams() as $team) {
+            $team->setStrikes(0);
+        }
     }
 
     public function toArray(): array

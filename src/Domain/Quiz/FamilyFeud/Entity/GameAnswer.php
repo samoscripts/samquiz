@@ -14,6 +14,7 @@ final class GameAnswer
         #[Groups(['public'])]
          public ?int $id = null
     ) {
+        $a = 1;
     }
 
     public function toArray(): array

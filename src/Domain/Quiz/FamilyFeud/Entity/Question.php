@@ -99,7 +99,7 @@ class Question
         $ratio = $targetSum / $currentSum;
         
         $recalculatedAnswers = array_map(
-            fn(GameAnswer $a) => new GameAnswer($a->text, (int)round($a->points * $ratio)),
+            fn(GameAnswer $a) => new GameAnswer($a->text, (int)round($a->points * $ratio), $a->id),
             $limitedAnswers->getAnswers()
         );
         
@@ -110,7 +110,8 @@ class Question
             $lastAnswer = $recalculatedAnswers[$lastIndex];
             $recalculatedAnswers[$lastIndex] = new GameAnswer(
                 $lastAnswer->text,
-                $lastAnswer->points + (100 - $actualSum)
+                $lastAnswer->points + (100 - $actualSum),
+                $lastAnswer->id
             );
         }
 

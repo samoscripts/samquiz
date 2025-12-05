@@ -48,6 +48,11 @@ class Team
         $this->strikes++;
     }
 
+    public function setStrikes(int $strikes): void
+    {
+        $this->strikes = $strikes;
+    }
+
     public function toArray(): array
     {
         return [

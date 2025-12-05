@@ -36,6 +36,10 @@ final class GameAnswerCollection implements \Countable
      */
     public function addAnswer(GameAnswer $answer): void
     {
+        //sprawdź czy odpowiedź już nie istnieje w kolekcji
+        if ($this->getByText($answer->text) !== null) {
+            throw new \InvalidArgumentException('Answer already exists');
+        }
         $this->answers[] = $answer;
     }
 
@@ -60,6 +64,10 @@ final class GameAnswerCollection implements \Countable
         return empty($this->answers);
     }
 
+    /**
+     * Zwraca wszystkie odpowiedzi z kolekcji
+     * @return GameAnswer[]
+     */
     public function getAnswers(): array
     {
         return $this->answers;
@@ -90,6 +98,38 @@ final class GameAnswerCollection implements \Countable
     public function count(): int
     {
         return count($this->answers);
+    }
+
+    /**
+     * Zwraca pierwszą odpowiedź ze stosu (pierwszą dodaną do kolekcji)
+     * W kontekście revealedAnswers - zwraca pierwszą odkrytą odpowiedź
+     * Niekoniecznie musi być to odpowiedź z indeksu 0 w oryginalnej kolekcji
+     * Przykład: jeśli odkryto najpierw odpowiedź #4, to zwróci odpowiedź #4
+     */
+    public function getFirstAnswer(): ?GameAnswer
+    {
+        // Zwraca pierwszą odpowiedź w kolejności dodania (pierwszą ze stosu)
+        // W revealedAnswers - pierwsza odkryta odpowiedź (może być z dowolnej pozycji w oryginalnej kolekcji)
+        return $this->answers[0] ?? null;
+    }
+
+    /**
+     * Zwraca najwyżej punktowaną odpowiedź z kolekcji
+     */
+    public function getHighestPointsAnswer(): ?GameAnswer
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        $highest = $this->answers[0];
+        foreach ($this->answers as $answer) {
+            if ($answer->points > $highest->points) {
+                $highest = $answer;
+            }
+        }
+
+        return $highest;
     }
 
     /**

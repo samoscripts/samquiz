@@ -2,7 +2,6 @@
 
 namespace App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud;
 
-use App\Infrastructure\Persistence\Entity\BaseEntity;
 use App\Infrastructure\Persistence\Trait\TimestampableEntity;
 use App\Infrastructure\Persistence\Trait\IdEntity;
 use Doctrine\ORM\Mapping as ORM;

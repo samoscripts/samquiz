@@ -3,10 +3,10 @@
 namespace App\Domain\Quiz\FamilyFeud\Repository;
 
 use App\Domain\Shared\Repository\RepositoryInterface;
-use App\Domain\Quiz\FamilyFeud\Entity\GameAnswer as DomainAnswer;
+use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Answer as DoctrineAnswer;
 
 
 interface AnswerRepositoryInterface extends RepositoryInterface
 {
-    public function findByTextAndQuestionId(string $text, int $questionId): ?DomainAnswer;
+    public function findOneByTextAndQuestionId(string $text, int $questionId): ?DoctrineAnswer;
 }

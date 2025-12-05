@@ -37,7 +37,7 @@ class QuestionController
             'groups' => ['public']
         ]);
         
-        return new JsonResponse(json_decode($serialized, true));
+        return JsonResponse::fromJsonString($serialized);
     }
 
     #[Route('/api/family-feud/game/{gameId}/newRound', methods: ['POST', 'OPTIONS'])]
@@ -65,38 +65,20 @@ class QuestionController
             'groups' => ['public']
         ]);
         
-        return new JsonResponse(json_decode($serialized, true));
+        return JsonResponse::fromJsonString($serialized);
     }
 
-    #[Route('/api/family-feud/game/{$gameId}/generateQuestion', methods: ['POST', 'OPTIONS'])]
-    public function generateQuestion(Request $request, QuestionGenerator $questionGenerator, string $gameId, GameStorageInterface $gameStorage): JsonResponse
-    {
-        $game = $gameStorage->get($gameId);
-        if (!$game) {
-            return new JsonResponse(['error' => 'Game not found'], 404);
-        }
-        $data = json_decode($request->getContent(), true);
-        $questionText = $data['question'] ?? 'Brak pytania';
-        $answersCount = isset($data['answersCount']) ? (int)$data['answersCount'] : 10;
-        
-        // Walidacja zakresu 3-10
-        $answersCount = max(3, min(10, $answersCount));
-
-        $question = $questionGenerator->generate($questionText, $answersCount);
-        
-        return new JsonResponse($question->toArray());
-    }
-
-    #[Route('/api/family-feud/{$gameId}/verifyAnswer', methods: ['POST', 'OPTIONS'])]
+    #[Route('/api/family-feud/game/{gameId}/verifyAnswer', methods: ['GET','POST', 'OPTIONS'])]
     public function verifyAnswer(Request $request, AnswerVerifier $answerVerifier, string $gameId, GameStorageInterface $gameStorage): JsonResponse
     {
         $game = $gameStorage->get($gameId);
         if (!$game) {
             return new JsonResponse(['error' => 'Game not found'], 404);
         }
+        $data = json_decode($request->getContent(), true);
             
         $playerAnswer = $answerVerifier->findMatchingAnswers(
-            $request->request->get('answer'), 
+            $data['answer'], 
             $game
         );
         $game->processPlayerAnswer($playerAnswer);
@@ -108,6 +90,71 @@ class QuestionController
             'groups' => ['public']
         ]);
         
+        return JsonResponse::fromJsonString($serialized);
+    }
+
+    #[Route('/api/family-feud/game/{gameId}/setActiveTeam', methods: ['POST', 'OPTIONS'])]
+    public function setActiveTeam(Request $request, string $gameId, GameStorageInterface $gameStorage): JsonResponse
+    {
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
+        }
+        $data = json_decode($request->getContent(), true);
+        $game->getTeamsCollection()->setActiveTeamKey((int)$data['teamId']);
+        $gameStorage->save($game->getGameId(), $game);
+        $serialized = $this->serializer->serialize($game, 'json', [
+            'groups' => ['public']
+        ]);
         return new JsonResponse(json_decode($serialized, true));
+    }
+
+    #[Route('/api/family-feud/game/{gameId}/nextRound', methods: ['POST', 'OPTIONS'])]
+    public function nextRound(Request $request, string $gameId, GameStorageInterface $gameStorage): JsonResponse
+    {
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
+        }
+
+        try {
+            $this->gameService->prepareNextRound($game);
+            $gameStorage->save($game->getGameId(), $game);
+
+            $serialized = $this->serializer->serialize($game, 'json', [
+                'groups' => ['public']
+            ]);
+            return new JsonResponse(json_decode($serialized, true));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    #[Route('/api/family-feud/game/{gameId}/revealAnswer', methods: ['POST', 'OPTIONS'])]
+    public function revealAnswer(Request $request, string $gameId, GameStorageInterface $gameStorage): JsonResponse
+    {
+        $game = $gameStorage->get($gameId);
+        if (!$game) {
+            return new JsonResponse(['error' => 'Game not found'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $answerText = $data['answerText'] ?? null;
+
+        if (!$answerText) {
+            return new JsonResponse(['error' => 'answerText is required'], 400);
+        }
+
+        try {
+            $game->revealAnswer($answerText);
+            $gameStorage->save($game->getGameId(), $game);
+
+            $serialized = $this->serializer->serialize($game, 'json', [
+                'groups' => ['public']
+            ]);
+            return new JsonResponse(json_decode($serialized, true));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
     }
 }

@@ -23,7 +23,6 @@ class AnswerVerifier
         private AnswerPlayerRepositoryInterface $answerPlayerRepository,
         private AnswerPlayerMapper $answerPlayerMapper
     ) {}
-
     
 
     public function findMatchingAnswers(
@@ -37,60 +36,34 @@ class AnswerVerifier
         );
 
         if (!$doctrineAnswerPlayer) {
-            //pobierz z AI o zapisz do bazy
-            $doctrineAnswerPlayer = $this->saveAnswerPlayer($answerPlayerText, $game->getQuestion());
+            //zweryfikuj odpowiedź z AI
+            $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $game->getQuestion());
+            $aiResponse = $this->aiService->ask($prompt);
+            $doctrineAnswerPlayer = $this->answerPlayerMapper->toEntity(
+                $answerPlayerText,
+                $aiResponse['found'] === true ? true : false,
+                $game->getQuestion()->getId(),
+                $aiResponse['answer']
+            );
+            $this->answerPlayerRepository->save($doctrineAnswerPlayer);
         }
 
         $domainAnswerPlayer = $doctrineAnswerPlayer->toDomain();
+        
+        
         if($doctrineAnswerPlayer->getAnswer() !== null) {
+            $matchedAnswer = $game->getQuestion()->getAnswerCollection()->getByText($doctrineAnswerPlayer->getAnswer()->getText());
             // Sprawdź czy znaleziona odpowiedź jest wśród pierwszych N odpowiedzi
-            $isInLimit = $this->isAnswerInFirstN(
-                $doctrineAnswerPlayer->getAnswer(), 
-                $game->getQuestion(), 
-                $game->getAnswersCount()
-            );
+            
             // Jeśli nie jest w pierwszych N odpowiedziach, traktuj jako niepoprawną
-            if (!$isInLimit) {
-                $domainAnswerPlayer = new DomainPlayerAnswer(
-                    playerInput: $answerPlayerText,
-                    matchedAnswer: null,
-                    isCorrect: false,
-                );
-            }
+            $domainAnswerPlayer = new DomainPlayerAnswer(
+                playerInput: $answerPlayerText,
+                matchedAnswer: $matchedAnswer,
+                isCorrect: $matchedAnswer !== null ? true : false,
+            );
+
         }
         return $domainAnswerPlayer;
-    }
-
-
-    private function saveAnswerPlayer(string $answerPlayerText, DomainQuestion $domainQuestion): DoctrineAnswerPlayer
-    {   
-        
-        // Sprawdź czy odpowiedź pasuje do wszystkich w bazie
-        $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $domainQuestion);
-        $aiResponse = $this->aiService->ask($prompt);
-
-        $found = $aiResponse['found'];
-        $answerText = $aiResponse['answer'];
-        $domainAnswer = null;
-        
-        if ($found === true) {
-            $domainAnswer = $domainQuestion->getAnswerCollection()->getByText($answerText);
-        } 
-
-        
-        // Tworzymy encję domenową
-        $domainAnswerPlayer = new DomainPlayerAnswer(
-            playerInput: $answerPlayerText, 
-            matchedAnswer: $domainAnswer,
-            isCorrect: $found, 
-        );
-        $doctrineAnswerPlayer = $this->answerPlayerMapper->toEntity(
-            $domainAnswerPlayer, 
-            questionId: $domainQuestion->getId(),
-            answerId: $domainAnswer ? $domainAnswer->getId() : null
-        );
-
-        return $doctrineAnswerPlayer;
     }
 
     /**
@@ -123,8 +96,8 @@ class AnswerVerifier
         // Sprawdź czy tekst znalezionej odpowiedzi pasuje do którejś z pierwszych N odpowiedzi
         $answerText = $doctrineAnswer->getText();
         
-        foreach ($limitedAnswers as $limitedAnswer) {
-            if ($this->checkAnswer($answerText, $limitedAnswer->text())) {
+        foreach ($limitedAnswers->getAnswers() as $limitedAnswer) {
+            if ($this->checkAnswer($answerText, $limitedAnswer->getText())) {
                 return true;
             }
         }

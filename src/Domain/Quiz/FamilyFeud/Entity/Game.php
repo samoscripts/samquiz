@@ -73,6 +73,11 @@ class Game
         $this->gameId = $gameId;
     }
 
+    public function getRoundPoints(): int
+    {
+        return $this->roundPoints;
+    }
+
     /**
      * Ustawia answersCount
      */
@@ -150,11 +155,101 @@ class Game
         }
     }
 
+    /**
+     * Odkrywa odpowiedź w fazie END_ROUND (bez weryfikacji, tylko dodaje do revealedAnswers)
+     */
+    public function revealAnswer(string $answerText): void
+    {
+        if ($this->phase !== GamePhase::END_ROUND) {
+            throw new \InvalidArgumentException('Answer can only be revealed in END_ROUND phase');
+        }
+
+        if (!$this->question) {
+            throw new \InvalidArgumentException('Question is required');
+        }
+
+        // Znajdź odpowiedź w answerCollection
+        $answer = $this->question->getAnswerCollection()->getByText($answerText);
+        if (!$answer) {
+            throw new \InvalidArgumentException('Answer not found in answer collection');
+        }
+
+        // Sprawdź czy odpowiedź już nie jest odkryta
+        if ($this->question->getRevealedAnswers()->getByText($answerText) !== null) {
+            throw new \InvalidArgumentException('Answer is already revealed');
+        }
+
+        // Dodaj odpowiedź do revealedAnswers
+        $this->question->getRevealedAnswers()->addAnswer($answer);
+    }
+
+    public function setRoundPoints(int $roundPoints): void
+    {
+        $this->roundPoints = $roundPoints;
+    }
+
+    public function resetRoundPoints(): void
+    {
+        $this->roundPoints = 0;
+    }
+    
+
     private function handleCorrectAnswer(DomainPlayerAnswer $playerAnswer): void
     {
+
+        //jeżeli odpowiedź już istnieje w kolekcji, to zwróć błąd
+        if ($this->question->getRevealedAnswers()->getByText($playerAnswer->getMatchedAnswer()->getText()) !== null) {
+            $this->handleIncorrectAnswer();
+            return;
+        }
         $this->question->getRevealedAnswers()->addAnswer($playerAnswer->getMatchedAnswer() ?? throw new \InvalidArgumentException('Matched answer is required'));
         $this->roundPoints += $playerAnswer->getMatchedAnswer()->points;
 
+        if ($this->phase === GamePhase::FACE_OFF) {
+            //jeżeli odpowiedź jest najwyżej punktowana
+            if ($playerAnswer->getMatchedAnswer()->getText() === $this->question->getAnswerCollection()->getFirstAnswer()->getText()) {
+                $this->getTeamsCollection()->resetStrikes();
+                $this->setPhase(GamePhase::PLAYING);
+                return;
+            }
+
+            //jeżeli jest to pierwsza odpowiedz, ale nie jest najwyżej punktowaną
+            $team1Strikes = $this->teamsCollection->getTeam(TeamCollection::TEAM1_KEY)->getStrikes();
+            $team2Strikes = $this->teamsCollection->getTeam(TeamCollection::TEAM2_KEY)->getStrikes();
+            $totalStrikes = $team1Strikes + $team2Strikes;
+            $revealedAnswersCount = $this->question->getRevealedAnswers()->count();
+            if ($revealedAnswersCount === 1 && $playerAnswer->getMatchedAnswer()->getText() !== $this->question->getAnswerCollection()->getFirstAnswer()->getText() && $totalStrikes === 0) {
+                $this->teamsCollection->switchActiveTeam();
+                return;
+            }
+            //jeżeli jest to co najmniej 2 próba odpowiedzi (poprzednie mogły ale nie musiały być poprawne)
+            //czyli jeżeli suma błędnych odpowiedzi i odsłoniętych odpowiedzi jest równa lub większa niż 2
+            if (($totalStrikes + $revealedAnswersCount) >= 2) {
+                // jeżeli jest to jedyna odpowiedz
+                if ($revealedAnswersCount === 1) {
+                    $this->getTeamsCollection()->resetStrikes();
+                    $this->setPhase(GamePhase::PLAYING);
+                    return;
+                }
+                //jeżeli odsłoniętych odpowiedzi jest więcej niż 1
+                if ($this->question->getRevealedAnswers()->count() > 1) {
+                    //jeżeli odpowiedź jest najwyżej punktowaną z odsłoniętych
+                    if ($playerAnswer->getMatchedAnswer()->getText() === $this->question->getRevealedAnswers()->getHighestPointsAnswer()) {
+                        $this->getTeamsCollection()->resetStrikes();
+                        $this->setPhase(GamePhase::PLAYING);
+                        return;
+                    }
+                    else {
+                        $this->getTeamsCollection()->resetStrikes();
+                        $this->setPhase(GamePhase::PLAYING);
+                        //zmien drużynę aktywną
+                        $this->teamsCollection->switchActiveTeam();
+                        return;
+                    }
+                }
+            }
+            return;
+        }
         //jeżeli faza to steal - zmiana phase na endRound i dodanie punktów do drużyny przeciwnj
         if ($this->phase === GamePhase::STEAL) {
             $this->teamsCollection->getActiveTeam()->addPoints($this->roundPoints);
@@ -169,10 +264,10 @@ class Game
 
     private function handleIncorrectAnswer(): void
     {
+        $this->teamsCollection->getActiveTeam()->increaseStrikes();
 
         //jeżeli faza to playing - to podbicie błędu o 1
         if ($this->phase === GamePhase::PLAYING) {
-            $this->teamsCollection->getActiveTeam()->increaseStrikes();
             if ($this->teamsCollection->getActiveTeam()->getStrikes() >= 3) {
                 $this->teamsCollection->switchActiveTeam();
                 $this->setPhase(GamePhase::STEAL);
@@ -181,8 +276,13 @@ class Game
             return;
         }
 
-        //jeżeli faza to faceOff - to tylko zmiana drużyny aktywnej
+
         if ($this->phase === GamePhase::FACE_OFF) {
+            //jeżeli jest już odsłonięta jakaś odpowiedź
+            if ($this->question->getRevealedAnswers()->count() > 0) {
+                $this->getTeamsCollection()->resetStrikes();
+                $this->setPhase(GamePhase::PLAYING);
+            }
             $this->teamsCollection->switchActiveTeam();
             return;
         }
