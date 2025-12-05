@@ -13,6 +13,7 @@ use App\Infrastructure\Persistence\Entity\Quiz\FamilyFeud\Question as DoctrineQu
 use Doctrine\Common\Collections\Collection;
 use App\Domain\Quiz\FamilyFeud\Entity\Game;
 use App\Infrastructure\Persistence\Mapper\Quiz\FamilyFeud\AnswerPlayerMapper;
+use App\Infrastructure\Persistence\Repository\Quiz\FamilyFeud\DoctrineQuestionRepository;
 
 class AnswerVerifier
 {
@@ -21,7 +22,8 @@ class AnswerVerifier
         private AIServiceInterface $aiService,
         private PromptBuilder $promptBuilder,
         private AnswerPlayerRepositoryInterface $answerPlayerRepository,
-        private AnswerPlayerMapper $answerPlayerMapper
+        private AnswerPlayerMapper $answerPlayerMapper,
+        private DoctrineQuestionRepository $questionRepository
     ) {}
     
 
@@ -37,7 +39,9 @@ class AnswerVerifier
 
         if (!$doctrineAnswerPlayer) {
             //zweryfikuj odpowiedź z AI
-            $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $game->getQuestion());
+            //pobieranie pytania z tabeli ff_question
+            $doctrineQuestion = $this->questionRepository->findById($game->getQuestion()->getId());
+            $prompt = $this->promptBuilder->buildVerifyAnswerPrompt($answerPlayerText, $doctrineQuestion->toDomain());
             $aiResponse = $this->aiService->ask($prompt);
             $doctrineAnswerPlayer = $this->answerPlayerMapper->toEntity(
                 $answerPlayerText,

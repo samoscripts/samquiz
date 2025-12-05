@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { gameApi } from '../../../services/api'
 import useGameStore from '../../../store/gameStore'
 import Button from '../../common/Button'
 import Input from '../../common/Input'
 import ErrorMessage from '../../common/ErrorMessage'
 import LoadingSpinner from '../../common/LoadingSpinner'
+import { useGameAlert } from '../../../hooks/useGameAlert'
 
 function NewRoundScreen() {
   const game = useGameStore(state => state.game)
+  const gameAlert = game?.gameAlert
+  const { handleGameAlert } = useGameAlert()
   const { 
     setGameState,
     setLoading,
@@ -15,6 +18,13 @@ function NewRoundScreen() {
     loading,
     error 
   } = useGameStore()
+
+  // Obsługa alertów - można rozszerzyć w przyszłości
+  useEffect(() => {
+    if (gameAlert) {
+      handleGameAlert(gameAlert)
+    }
+  }, [gameAlert, handleGameAlert])
   
   const gameId = game?.gameId
   const currentRound = game?.currentRound

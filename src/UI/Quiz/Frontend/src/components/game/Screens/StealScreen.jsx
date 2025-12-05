@@ -4,12 +4,23 @@ import useGameStore from '../../../store/gameStore'
 import AnswerBoard from '../AnswerBoard'
 import QuestionInput from '../QuestionInput'
 import ScoreBoard from '../ScoreBoard'
-import SingleStrikeIndicator from '../SingleStrikeIndicator'
+import StrikeIndicator from '../StrikeIndicator'
 import ErrorMessage from '../../common/ErrorMessage'
+import { useGameAlert } from '../../../hooks/useGameAlert'
 
 function StealScreen() {
   const inputRef = useRef(null)
   const game = useGameStore(state => state.game)
+  const gameAlert = game?.gameAlert
+  const { handleGameAlert } = useGameAlert()
+
+  // Obsługa alertów - można rozszerzyć w przyszłości
+  useEffect(() => {
+    if (gameAlert) {
+      handleGameAlert(gameAlert)
+    }
+  }, [gameAlert, handleGameAlert])
+
   const { 
     answerInput,
     setAnswerInput,
@@ -44,6 +55,8 @@ function StealScreen() {
       // Backend przetwarza odpowiedź i zwraca zaktualizowany stan
       const gameData = await gameApi.verifyAnswer(gameId, answerInput)
       
+      // Alerty są obsługiwane globalnie w App.jsx
+      
       // Backend zmieni phase na END_ROUND po kradzieży
       setGameState(gameData)
       setAnswerInput('')
@@ -72,12 +85,12 @@ function StealScreen() {
       <ScoreBoard teamsCollection={teamsCollection} roundPoints={roundPoints} activeTeamKey={activeTeamKey} />
 
       <div className="strikes-container">
-        <SingleStrikeIndicator strikes={teamsCollection?.teams?.["1"]?.strikes || 0} />
+        <StrikeIndicator strikes={teamsCollection?.teams?.["1"]?.strikes || 0} />
         <AnswerBoard 
           answers={question?.answerCollection?.answers || []}
           revealedAnswers={question?.revealedAnswers?.answers || []}
         />
-        <SingleStrikeIndicator strikes={teamsCollection?.teams?.["2"]?.strikes || 0} />
+        <StrikeIndicator strikes={teamsCollection?.teams?.["2"]?.strikes || 0} />
       </div>
 
       <div className="steal-controls">

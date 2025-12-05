@@ -1,16 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { gameApi } from '../../../services/api'
 import useGameStore from '../../../store/gameStore'
 import Button from '../../common/Button'
 import Input from '../../common/Input'
 import ErrorMessage from '../../common/ErrorMessage'
 import LoadingSpinner from '../../common/LoadingSpinner'
+import { useGameAlert } from '../../../hooks/useGameAlert'
 
 function NewGameScreen() {
   const [team1Name, setTeam1Name] = useState('Drużyna 1')
   const [team2Name, setTeam2Name] = useState('Drużyna 2')
   const [roundsCount, setRoundsCount] = useState(3) // Dodane: domyślnie 3 rundy
-  const { setGameState, setLoading, setError, loading, error } = useGameStore()
+  const { setGameState, setLoading, setError, loading, error, game } = useGameStore()
+  const gameAlert = game?.gameAlert
+  const { handleGameAlert } = useGameAlert()
+
+  // Obsługa alertów - można rozszerzyć w przyszłości
+  useEffect(() => {
+    if (gameAlert) {
+      handleGameAlert(gameAlert)
+    }
+  }, [gameAlert, handleGameAlert])
 
   const handleStart = async (e) => {
     e.preventDefault()

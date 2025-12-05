@@ -6,10 +6,21 @@ import QuestionInput from '../QuestionInput'
 import ScoreBoard from '../ScoreBoard'
 import StrikeIndicator from '../StrikeIndicator'
 import ErrorMessage from '../../common/ErrorMessage'
+import { useGameAlert } from '../../../hooks/useGameAlert'
 
 function PlayingScreen() {
   const inputRef = useRef(null)
   const game = useGameStore(state => state.game)
+  const gameAlert = game?.gameAlert
+  const { handleGameAlert } = useGameAlert()
+
+  // Obsługa alertów - można rozszerzyć w przyszłości
+  useEffect(() => {
+    if (gameAlert) {
+      handleGameAlert(gameAlert)
+    }
+  }, [gameAlert, handleGameAlert])
+
   const { 
     answerInput,
     setAnswerInput,
@@ -40,6 +51,8 @@ function PlayingScreen() {
     try {
       // Backend przetwarza odpowiedź i zwraca zaktualizowany stan
       const gameData = await gameApi.verifyAnswer(gameId, answerInput)
+      
+      // Alerty są obsługiwane globalnie w App.jsx
       
       // Backend może zmienić phase na STEAL, END_ROUND, lub zostać w PLAYING
       setGameState(gameData)

@@ -1,12 +1,23 @@
+import { useEffect } from 'react'
 import { gameApi } from '../../../services/api'
 import useGameStore from '../../../store/gameStore'
 import AnswerBoard from '../AnswerBoard'
 import ScoreBoard from '../ScoreBoard'
 import Button from '../../common/Button'
 import ErrorMessage from '../../common/ErrorMessage'
+import { useGameAlert } from '../../../hooks/useGameAlert'
 
 function EndRoundScreen() {
   const game = useGameStore(state => state.game)
+  const gameAlert = game?.gameAlert
+  const { handleGameAlert } = useGameAlert()
+
+  // Obsługa alertów - można rozszerzyć w przyszłości
+  useEffect(() => {
+    if (gameAlert) {
+      handleGameAlert(gameAlert)
+    }
+  }, [gameAlert, handleGameAlert])
   const { 
     setGameState,
     setLoading,

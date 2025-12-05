@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Ignore;
 use App\Domain\Quiz\FamilyFeud\Entity\TeamCollection;
 use App\Domain\Quiz\FamilyFeud\Entity\GamePhase;
 use App\Domain\Quiz\FamilyFeud\ValueObject\PlayerAnswer as DomainPlayerAnswer;
+use App\Domain\Quiz\FamilyFeud\ValueObject\GameAlert;
 use Symfony\Component\Serializer\Attribute\SerializedName;
 
 class Game
@@ -37,6 +38,8 @@ class Game
     #[Groups(['public'])]
     private int $roundPoints = 0;
 
+    #[Groups(['alert'])]
+    private ?GameAlert $gameAlert = null;
 
     #[Ignore]
     private ?QuestionRepositoryInterface $questionRepository = null;
@@ -76,6 +79,21 @@ class Game
     public function getRoundPoints(): int
     {
         return $this->roundPoints;
+    }
+
+    public function getGameAlert(): ?GameAlert
+    {
+        return $this->gameAlert;
+    }
+
+    public function setGameAlert(GameAlert $gameAlert): void
+    {
+        $this->gameAlert = $gameAlert;
+    }
+
+    public function clearAlert(): void
+    {
+        $this->gameAlert = null;
     }
 
     /**
@@ -204,6 +222,10 @@ class Game
         }
         $this->question->getRevealedAnswers()->addAnswer($playerAnswer->getMatchedAnswer() ?? throw new \InvalidArgumentException('Matched answer is required'));
         $this->roundPoints += $playerAnswer->getMatchedAnswer()->points;
+        
+        // Ustaw alert dla poprawnej odpowiedzi - zawsze ustawiamy CORRECT_SOUND
+        // STRIKES_DISPLAY nie jest potrzebny, bo strikes są już wyświetlane w UI automatycznie
+        $this->gameAlert = GameAlert::correctSound();
 
         if ($this->phase === GamePhase::FACE_OFF) {
             //jeżeli odpowiedź jest najwyżej punktowana
@@ -265,10 +287,16 @@ class Game
     private function handleIncorrectAnswer(): void
     {
         $this->teamsCollection->getActiveTeam()->increaseStrikes();
+        $activeTeamKey = $this->teamsCollection->activeTeamKey;
+        $strikes = $this->teamsCollection->getActiveTeam()->getStrikes();
+
+        // Ustaw alert dla błędu - czerwony X - zawsze ustawiamy ERROR_X
+        // STRIKES_DISPLAY nie jest potrzebny, bo strikes są już wyświetlane w UI automatycznie
+        $this->gameAlert = GameAlert::errorX();
 
         //jeżeli faza to playing - to podbicie błędu o 1
         if ($this->phase === GamePhase::PLAYING) {
-            if ($this->teamsCollection->getActiveTeam()->getStrikes() >= 3) {
+            if ($strikes >= 3) {
                 $this->teamsCollection->switchActiveTeam();
                 $this->setPhase(GamePhase::STEAL);
                 return;

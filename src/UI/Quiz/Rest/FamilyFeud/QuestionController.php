@@ -32,9 +32,9 @@ class QuestionController
 
         $gameStorage->save($game->getGameId(), $game);
 
-        // Użyj Symfony Serializer zamiast toArray() - zwraca wszystkie pola z #[Groups(['public'])]
+        // Użyj Symfony Serializer - zwraca pola z #[Groups(['public'])] i #[Groups(['alert'])]
         $serialized = $this->serializer->serialize($game, 'json', [
-            'groups' => ['public']
+            'groups' => ['public', 'alert']
         ]);
         
         return JsonResponse::fromJsonString($serialized);
@@ -60,9 +60,9 @@ class QuestionController
 
         $gameStorage->save($game->getGameId(), $game);
         
-        // Użyj Symfony Serializer zamiast toArray() - zwraca wszystkie pola z #[Groups(['public'])]
+        // Użyj Symfony Serializer - zwraca pola z #[Groups(['public'])] i #[Groups(['alert'])]
         $serialized = $this->serializer->serialize($game, 'json', [
-            'groups' => ['public']
+            'groups' => ['public', 'alert']
         ]);
         
         return JsonResponse::fromJsonString($serialized);
@@ -85,9 +85,9 @@ class QuestionController
         
         $gameStorage->save($game->getGameId(), $game);
 
-        // Użyj Symfony Serializer zamiast toArray() - zwraca wszystkie pola z #[Groups(['public'])]
+        // Użyj Symfony Serializer - zwraca pola z #[Groups(['public'])] i #[Groups(['alert'])]
         $serialized = $this->serializer->serialize($game, 'json', [
-            'groups' => ['public']
+            'groups' => ['public', 'alert']
         ]);
         
         return JsonResponse::fromJsonString($serialized);
@@ -104,9 +104,10 @@ class QuestionController
         $game->getTeamsCollection()->setActiveTeamKey((int)$data['teamId']);
         $gameStorage->save($game->getGameId(), $game);
         $serialized = $this->serializer->serialize($game, 'json', [
-            'groups' => ['public']
+            'groups' => ['public', 'alert']
         ]);
-        return new JsonResponse(json_decode($serialized, true));
+        
+        return JsonResponse::fromJsonString($serialized);
     }
 
     #[Route('/api/family-feud/game/{gameId}/nextRound', methods: ['POST', 'OPTIONS'])]
@@ -122,9 +123,10 @@ class QuestionController
             $gameStorage->save($game->getGameId(), $game);
 
             $serialized = $this->serializer->serialize($game, 'json', [
-                'groups' => ['public']
+                'groups' => ['public', 'alert']
             ]);
-            return new JsonResponse(json_decode($serialized, true));
+            
+            return JsonResponse::fromJsonString($serialized);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }
@@ -150,9 +152,10 @@ class QuestionController
             $gameStorage->save($game->getGameId(), $game);
 
             $serialized = $this->serializer->serialize($game, 'json', [
-                'groups' => ['public']
+                'groups' => ['public', 'alert']
             ]);
-            return new JsonResponse(json_decode($serialized, true));
+            
+            return JsonResponse::fromJsonString($serialized);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }
